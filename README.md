@@ -47,3 +47,29 @@ Assist Modelの指示によりWebブラウジングをして，その結果を�
 - Thinking Model
 Gemini Thinking
 Assist Modelの指示により，より深い思考を行い，その結果を報告する
+
+### setup
+```
+conda create -n ai_tuber python=3.12
+conda activate ai_tuber
+pip install langchain
+pip install langchain_openai
+pip install langchain_google_genai
+pip install langgraph
+pip install google-generativeai
+pip install python-dotenv
+pip install browser-use
+playwright install
+pip install langchain_community
+winget install Microsoft.VisualStudio.2022.BuildTools
+pip install chromadb
+pip install langchain_chroma
+pip install sentence-transformers
+pip install sentencepiece
+pip install langchain_huggingface
+```
+`.env`ファイルを作成し，ルートに配置
+
+### Youtube関連
+https://qiita.com/Tomonobu3110/items/24c4e256498e1c4de922
+

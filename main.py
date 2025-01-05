@@ -14,6 +14,8 @@ from langchain_chroma import Chroma
 import chromadb
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.globals import set_verbose, set_debug
+import asyncio
+from browser_use.browser.browser import Browser, BrowserConfig
 
 DEBUG = True
 set_debug(DEBUG)
@@ -33,11 +35,37 @@ class ManagerFormat(BaseModel):
     feedback: str = Field(..., description="Vtuberに対するフィードバック．scoreが2以下の場合に記述．")
     score: int = Field(..., ge=0, le=9, description="Vtuberの発言に対する評価．0から9の10段階．")
 
+@tool
+async def think(input: Annotated[str, "what to think about"]) -> str:
+    """Think about the input."""
+    gemini_think = ChatGoogleGenerativeAI(model="gemini-2.0-flash-thinking-exp-1219", temperature=0.7)
+    # ThinkModelの設定
+    think_prompt = ChatPromptTemplate.from_messages([
+        SystemMessage(content="""
+Think deeply about the input and generate an appropriate response.
+Be careful not to make your response too long.
+"""
+        ),
+        MessagesPlaceholder(variable_name="messages")
+    ])
+    think_model = think_prompt | gemini_think
+    message = [HumanMessage(content=input)]
+    response = await think_model.ainvoke({"messages": message})
+    return response.content
+@tool
+async def web_search(input: Annotated[str, "what to search for"]) -> str:
+    """Search the web for the input."""
+    agent = Agent(
+        task=input,
+        llm=ChatOpenAI(model="gpt-4o-mini")
+    )
+    result = await agent.run()
+    return result
+
 class AItuber:
     def __init__(self):
         gemini_flash = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.7)
-        gemini_think = ChatGoogleGenerativeAI(model="gemini-2.0-flash-thinking-exp-1219", temperature=0.7)
-        tool_list = [self.think, self.web_search]
+        tool_list = [think, web_search]
         self.message_history = []
         self.mh_limit = 10 # 10なら対話5回分の履歴を保持
         self.session_id = "ai-tuber"
@@ -165,24 +193,13 @@ conversation: <conversation>
     conversation: 会話の流れ．
 """
             ),
-            HumanMessage(content="tool: {tool}\nconversation: {conversation}"),
-            ("placeholder", "{agent_scratchpad}"),
+            MessagesPlaceholder(variable_name="input"),
+            MessagesPlaceholder(variable_name="agent_scratchpad")
         ])
         self.assist_model = AgentExecutor(
             agent = create_tool_calling_agent(gemini_flash, tool_list, assist_prompt),
             tools=tool_list
         )
-        # ThinkModelの設定
-        think_prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content="""
-入力された内容について深く考え，適切な返答を生成してください．
-返答は必ず日本語で行ってください．
-また，返答が長くなりすぎないように注意してください．
-"""
-            ),
-            MessagesPlaceholder(variable_name="messages")
-        ])
-        self.think_model = think_prompt | gemini_think
         # ManagerModelの設定
         manager_prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content="""
@@ -248,19 +265,17 @@ conversation: <conversation>
     def call_talk_model(self, state: MessagesState):
         last_msg = state['messages'][-1].content
         input = TalkInput.model_validate_json(last_msg)
+        input.input = input.input.replace("\n", "")
         setting_docs = self.setting_vr.invoke(input.input)
         memory_docs = self.memory_vr.invoke(input.input)
         setting = "\n".join([doc.page_content for doc in setting_docs])
         memory = "\n".join([doc.page_content for doc in memory_docs])
         history = self.message_history
-        # historyが空のリストの場合は適当な文字列を入れる
         if not history:
             history = [HumanMessage(content="No conversation history")]
         message = [HumanMessage(content=f"setting: <{setting}>\nmemory: <{memory}>\nname: {input.name}\ninput: {input.input}")]
         input_message = {"message": message, "history": history}
-        print("TalkModel input: ", input_message)
         response = self.talk_model.invoke(input_message)
-        print("TalkModel output: ", response)
         self.add_history(HumanMessage(content=f"{input.name}: {input.input}"))
         self.add_history(AIMessage(content=f"雲霧星奈: {response.reply}"))
         self.send_unity(response)
@@ -270,22 +285,18 @@ conversation: <conversation>
             f.write(save_data)
         response = response.model_dump_json()
         return {"messages": [response]}
-    def call_assist_model(self, state: MessagesState):
+    async def call_assist_model(self, state: MessagesState):
         conversation = self.get_history()
         last_message = state['messages'][-1].content
         last_message = TalkFormat.model_validate_json(last_message)
-        input = {'tool': last_message.action, 'conversation': conversation}
-        print("AssistModel input: ", input)
-        response = self.assist_model.invoke(input)
-        print("AssistModel output", response)
-        talk_input = TalkInput(name=last_message.action, input=response).model_dump_json()
+        input = {"input": [HumanMessage(content=f"tool: {last_message.action}\nconversation: {conversation}")]}
+        response = await self.assist_model.ainvoke(input)
+        talk_input = TalkInput(name=last_message.action, input=response["output"]).model_dump_json()
         return {"messages": [talk_input]}
     def call_manager_model(self, state: MessagesState):
         conversation = self.get_history()
         input = {'conv': [HumanMessage(content=conversation)]}
-        print("ManagerModel input: ", input)
         response = self.manager_model.invoke(input)
-        print("ManagerModel output", response)
         response = response.model_dump_json()
         return {"messages": [response]}
     def fix_format(self, state: MessagesState):
@@ -296,47 +307,24 @@ conversation: <conversation>
         
         msg = TalkInput(name="manager", input=last_message.feedback).model_dump_json()
         return {"messages": [msg]}
-        # return {"messages": [TalkInput(name="manager", input=last_message.feedback)]}
     def send_unity(self, data: TalkFormat):
         
         # http通信でUnityにデータを送信
         
         pass
-    @tool
-    async def think(self,
-        input: Annotated[str, "what to think about"],
-    ) -> str:
-        """Think about the input."""
-        response = await self.think_model.invoke({'messages': input})
-        return response.content
-    @tool
-    async def web_search(self,
-        input: Annotated[str, "what to search for"],
-    ) -> str:
-        """Search the web for the input."""
-        agent = Agent(
-            task=input,
-            llm=ChatOpenAI(model="gpt-4o-mini"),
-        )
-        result = await agent.run()
-        return result
+
     def main(self, name:str = None, input:str = None):
         if name is None or input is None:
             name, input = self.get_youtube_comment()
         input = TalkInput(name=name, input=input).model_dump_json()
-        events = self.graph.stream(
-            {"messages": [input]},
-            # stream_mode="values"
-        )
-        for event in events:
-            print(event)
+        asyncio.run(self.graph.ainvoke({"messages": [input]}))
         return
     def get_youtube_comment(self):
 
         # youtubeのコメントを取得
         
         name = "ユーザーA"
-        input = "ホログラム宇宙論についてWebで調べて"
+        input = "最近流行りのボカロ曲って何かある？"
         return name, input
 
 if __name__ == "__main__":
