@@ -22,10 +22,12 @@ Web検索，を選択した場合はWeb Modelが動いてブラウジングを�
 - Unityキャラモーション(音声のピッチや大きさに応じて体を揺らす（縦・横）)
 - Unityリップシンク
 - Youtube配信の実行
-- LangChain使えるようにする（LlamaIndex,Weaviate）
 - キャラ設定を作りこむ
-- web_useの使い方
 - ブラウザを特定の領域に開く方法
+- Unityのexe化
+- PythonからUnity起動
+- PythonからOBS APIで配信
+- PythonからStream APIで配信作成
 
 ### LLM
 - Talk Model
@@ -72,4 +74,3 @@ pip install langchain_huggingface
 
 ### Youtube関連
 https://qiita.com/Tomonobu3110/items/24c4e256498e1c4de922
-
