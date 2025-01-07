@@ -28,6 +28,8 @@ Web検索，を選択した場合はWeb Modelが動いてブラウジングを�
 - PythonからUnity起動
 - PythonからOBS APIで配信
 - PythonからStream APIで配信作成
+- browser-useでブラウザ画面が閉じないようにする．出来たら，既に開いているブラウザを指定できるようにする．
+- browser-useのdeepseek対応 https://hamaruki.com/deepseek-v3-browser-use-webui/
 
 ### LLM
 - Talk Model
