@@ -23,12 +23,11 @@ Web検索，を選択した場合はWeb Modelが動いてブラウジングを�
 - Unityリップシンク
 - Youtube配信の実行
 - キャラ設定を作りこむ
-- ブラウザを特定の領域に開く方法
 - Unityのexe化
 - PythonからUnity起動
+↓優先度低め
 - PythonからOBS APIで配信
 - PythonからStream APIで配信作成
-- browser-useでブラウザ画面が閉じないようにする．出来たら，既に開いているブラウザを指定できるようにする．
 - browser-useのdeepseek対応 https://hamaruki.com/deepseek-v3-browser-use-webui/
 
 ### LLM
@@ -76,3 +75,9 @@ pip install langchain_huggingface
 
 ### Youtube関連
 https://qiita.com/Tomonobu3110/items/24c4e256498e1c4de922
+
+### 使い方
+- OBS Studioをインストール
+
+[こちら](https://obsproject.com/ja/download)からOBS Studioをインストールします．
+- 
