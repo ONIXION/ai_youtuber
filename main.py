@@ -8,7 +8,7 @@ from typing import Annotated, List, Literal
 from langgraph.graph import END, START, StateGraph, MessagesState
 from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage, AIMessage
-from browser_use import Agent
+from browser_use import Agent, Controller
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 import chromadb
@@ -16,10 +16,33 @@ from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.globals import set_verbose, set_debug
 import asyncio
 from browser_use.browser.browser import Browser, BrowserConfig
+import win32gui
 
 DEBUG = True
 set_debug(DEBUG)
 set_verbose(DEBUG)
+
+browser = Browser(
+	config=BrowserConfig(
+		headless=False,
+		chrome_instance_path="C:\Program Files\Google\Chrome\Application\chrome.exe",
+	)
+)
+controller = Controller()
+
+def move_resize(x: int, y: int, width: int, height: int, title: str="Google Chrome"):
+    # titleを含むウィンドウハンドルを取得
+    def enum_window_callback(hwnd, results):
+        if win32gui.IsWindowVisible(hwnd) and title in win32gui.GetWindowText(hwnd):
+            results.append(hwnd)
+    results = []
+    win32gui.EnumWindows(enum_window_callback, results)
+    if not results:
+        print(f"No window found")
+        return
+    for hwnd in results:
+        print(f"move and resize window: {win32gui.GetWindowText(hwnd)}")
+        win32gui.MoveWindow(hwnd, x, y, width, height, True)
 
 class TalkInput(BaseModel):
     name: str
@@ -55,9 +78,18 @@ Be careful not to make your response too long.
 @tool
 async def web_search(input: Annotated[str, "what to search for"]) -> str:
     """Search the web for the input."""
+    model = ChatOpenAI(model='gpt-4o')
     agent = Agent(
         task=input,
-        llm=ChatOpenAI(model="gpt-4o-mini")
+        llm=model,
+        controller=controller,
+        browser=browser,
+    )
+    move_resize(
+        x=100,
+        y=100,
+        width=1280,
+        height=1100
     )
     result = await agent.run()
     return result
