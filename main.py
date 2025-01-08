@@ -17,8 +17,9 @@ from langchain.globals import set_verbose, set_debug
 import asyncio
 from browser_use.browser.browser import Browser, BrowserConfig
 import win32gui
+import requests
 
-DEBUG = True
+DEBUG = False
 set_debug(DEBUG)
 set_verbose(DEBUG)
 
@@ -75,6 +76,7 @@ Be careful not to make your response too long.
     message = [HumanMessage(content=input)]
     response = await think_model.ainvoke({"messages": message})
     return response.content
+
 @tool
 async def web_search(input: Annotated[str, "what to search for"]) -> str:
     """Search the web for the input."""
@@ -336,14 +338,16 @@ conversation: <conversation>
         last_message = ManagerFormat.model_validate_json(last_message)
 
         # Youtubeにコメント書き込み
-        
+
         msg = TalkInput(name="manager", input=last_message.feedback).model_dump_json()
         return {"messages": [msg]}
     def send_unity(self, data: TalkFormat):
-        
-        # http通信でUnityにデータを送信
-        
-        pass
+        url = "http://localhost:5000" # UnityのサーバーのURL
+        payload = {"reply": data.reply, "action": data.action, "emotion": data.emotion}
+        response = requests.post(url, json=payload)
+        # responseが異常なら警告を出す
+        if response.status_code != 200:
+            print(f"Failed to send data to Unity: {response.status_code}")
 
     def main(self, name:str = None, input:str = None):
         if name is None or input is None:
@@ -354,7 +358,8 @@ conversation: <conversation>
     def get_youtube_comment(self):
 
         # youtubeのコメントを取得
-        
+        # 何らかの方法でコメントを読み上げる
+
         name = "ユーザーA"
         input = "最近流行りのボカロ曲って何かある？"
         return name, input
