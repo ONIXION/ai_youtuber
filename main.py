@@ -18,6 +18,185 @@ import asyncio
 from browser_use.browser.browser import Browser, BrowserConfig
 import win32gui
 import requests
+from dotenv import load_dotenv
+load_dotenv()
+import os
+import time
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+import threading
+from collections import deque
+import random
+
+class ThreadSafeComments:
+    def __init__(self, maxlen=1000):
+        self.comments = deque(maxlen=maxlen)
+        self.lock = threading.Lock()
+        self.last_accessed_time = time.time()
+
+    def add_comment(self, author, text):
+        with self.lock:
+            self.comments.append({
+                'author': author,
+                'text': text,
+                'timestamp': time.time()
+            })
+
+    def get_random_comment(self):
+        with self.lock:
+            if not self.comments:
+                return None
+            current_time = time.time()
+            # 30秒以上古いコメントを削除
+            while self.comments and (current_time - self.comments[0]['timestamp']) > 30:
+                self.comments.popleft()
+            if not self.comments:
+                return None
+            # ランダムなindexを選択
+            random_index = random.randint(0, len(self.comments) - 1)
+            comment = self.comments[random_index]
+            # random_indexより前のコメントを削除
+            self.comments = deque(list(self.comments)[random_index+1:], maxlen=self.comments.maxlen)
+            self.last_accessed_time = current_time
+            return comment
+
+class TalkInput(BaseModel):
+    name: str
+    input: str
+
+# TalkModelの出力形式を定義
+class TalkFormat(BaseModel):
+    reply: str = Field(..., description="マネージャーや視聴者に対する返答")
+    action: Literal["Nothing", "Think", "WebSearch"] = Field(..., description="次の行動．以下のいずれかから選択: Nothing, Think, WebSearch")
+    emotion: Literal["normal", "happy", "angry", "sad", "surprised", "shy", "excited", "smug", "teasing", "confused"] = Field(..., description="現在の感情．以下のいずれかから選択: normal, happy, angry, sad, surprised, shy, excited, smug, teasing, confused")
+
+class ManagerFormat(BaseModel):
+    feedback: str = Field(..., description="Vtuberに対するフィードバック．scoreが2以下の場合に記述．")
+    score: int = Field(..., ge=0, le=9, description="Vtuberの発言に対する評価．0から9の10段階．")
+
+# グローバルなThreadSafeCommentsインスタンス
+comments_manager = ThreadSafeComments()
+
+def send_unity(reply: str, action: str, emotion: str):
+    url = "http://localhost:5000" # UnityのサーバーのURL
+    payload = {"reply": reply, "action": action, "emotion": emotion}
+    try:
+        pass
+        # response = requests.post(url, json=payload)
+        # # responseが異常なら警告を出す
+        # if response.status_code != 200:
+        #     print(f"Failed to send data to Unity: {response.status_code}")
+    except Exception as e:
+        print(f"Failed to send data to Unity: {e}")
+
+def initialize_youtube_api():
+    """YouTube APIクライアントの初期化"""
+    api_key = os.getenv("YOUTUBE_API_KEY")
+    return build('youtube', 'v3', developerKey=api_key)
+
+def get_live_chat_id(youtube, video_id):
+    """動画IDからライブチャットIDを取得"""
+    try:
+        response = youtube.videos().list(
+            part='liveStreamingDetails',
+            id=video_id
+        ).execute()
+
+        items = response.get('items', [])
+        if not items:
+            raise ValueError(f"動画ID {video_id} のライブチャットが見つかりません。")
+        live_details = items[0].get('liveStreamingDetails', {})
+        live_chat_id = live_details.get('activeLiveChatId')
+        if not live_chat_id:
+            raise ValueError("ライブチャットIDが取得できません。")
+        return live_chat_id
+    except HttpError as e:
+        print(f"APIエラー: {e}")
+        raise
+    except Exception as e:
+        print(f"エラー: {e}")
+        raise
+
+def get_live_chat_messages(youtube, live_chat_id, page_token=None):
+    """ライブチャットのメッセージを取得"""
+    try:
+        return youtube.liveChatMessages().list(
+            liveChatId=live_chat_id,
+            part='snippet,authorDetails',
+            pageToken=page_token
+        ).execute()
+    except HttpError as e:
+        print(f"APIエラー: {e}")
+        raise
+    except Exception as e:
+        print(f"エラー: {e}")
+        raise
+
+def monitor_live_chat(video_url):
+    """
+    ライブチャットを継続的にモニタリング
+    Args:
+        video_url (str): YouTubeの動画URL
+        callback (callable, optional): 各メッセージを処理するコールバック関数
+    """
+    # 動画IDの抽出
+    video_id = video_url.split("v=")[1].split("&")[0]
+    # YouTube APIの初期化
+    youtube = initialize_youtube_api()
+    try:
+        # ライブチャットIDの取得
+        live_chat_id = get_live_chat_id(youtube, video_id)
+        # 既存のメッセージを追跡するためのセット
+        processed_messages = set()
+        next_page_token = None
+        print("ライブチャットのモニタリングを開始します...")
+        while True:
+            try:
+                # メッセージの取得
+                chat_response = get_live_chat_messages(youtube, live_chat_id, next_page_token)
+                # 新しいメッセージの処理
+                for message in chat_response.get('items', []):
+                    message_id = message['id']
+                    # 未処理のメッセージのみを処理
+                    if message_id not in processed_messages:
+                        author = message['authorDetails']['displayName']
+                        text = message['snippet']['displayMessage']
+                        # コメントをスレッドセーフなキューに追加
+                        comments_manager.add_comment(author, text)
+                        # print(f"[新規コメント] {author}: {text}")
+                        # コメントをUnityに送信
+                        send_unity(reply=text, action="Message", emotion="normal")
+                        processed_messages.add(message_id)
+                # 古いメッセージIDを削除（最新の1000件のみ保持）
+                if len(processed_messages) > 1000:
+                    processed_messages = set(list(processed_messages)[-1000:])
+                # 次のページトークンの更新
+                next_page_token = chat_response.get('nextPageToken')
+                # ポーリング間隔（YouTube APIの制限を考慮）
+                time.sleep(10)
+            except HttpError as e:
+                if e.resp.status in [403, 429]:  # レート制限エラー
+                    print(f"レート制限に達しました。60秒待機します...")
+                    time.sleep(60)
+                    continue
+                else:
+                    raise
+    except KeyboardInterrupt:
+        print("\nモニタリングを終了します。")
+    except Exception as e:
+        print(f"予期せぬエラーが発生しました: {e}")
+        raise
+
+def start_comment_monitoring(video_url):
+    """コメント監視を別スレッドで開始する"""
+    thread = threading.Thread(
+        target=monitor_live_chat,
+        args=(video_url,),
+        daemon=True
+    )
+    thread.start()
+    return thread
+
 
 DEBUG = False
 set_debug(DEBUG)
@@ -44,20 +223,6 @@ def move_resize(x: int, y: int, width: int, height: int, title: str="Google Chro
     for hwnd in results:
         print(f"move and resize window: {win32gui.GetWindowText(hwnd)}")
         win32gui.MoveWindow(hwnd, x, y, width, height, True)
-
-class TalkInput(BaseModel):
-    name: str
-    input: str
-
-# TalkModelの出力形式を定義
-class TalkFormat(BaseModel):
-    reply: str = Field(..., description="マネージャーや視聴者に対する返答")
-    action: Literal["Nothing", "Think", "WebSearch"] = Field(..., description="次の行動．以下のいずれかから選択: Nothing, Think, WebSearch")
-    emotion: Literal["normal", "happy", "angry", "sad", "surprised", "shy", "excited", "smug", "teasing", "confused"] = Field(..., description="現在の感情．以下のいずれかから選択: normal, happy, angry, sad, surprised, shy, excited, smug, teasing, confused")
-
-class ManagerFormat(BaseModel):
-    feedback: str = Field(..., description="Vtuberに対するフィードバック．scoreが2以下の場合に記述．")
-    score: int = Field(..., ge=0, le=9, description="Vtuberの発言に対する評価．0から9の10段階．")
 
 @tool
 async def think(input: Annotated[str, "what to think about"]) -> str:
@@ -107,7 +272,7 @@ class AItuber:
         self.setting_vr = self.create_vector_retriever(top_k=1, path="./chroma-db-setting")
         self.memory_vr = self.create_vector_retriever(top_k=3, path="./chroma-db-memory")
         # setting.txtのデータをvector_retrieverに追加
-        with open("./setting.txt", "r") as f:
+        with open("./setting.txt", "r", encoding='utf-8') as f:
             setting_texts = f.read().splitlines()
             self.add_data_to_vr(self.setting_vr, setting_texts)
         # memory.txtのデータをvector_retrieverに追加
@@ -312,8 +477,9 @@ conversation: <conversation>
         response = self.talk_model.invoke(input_message)
         self.add_history(HumanMessage(content=f"{input.name}: {input.input}"))
         self.add_history(AIMessage(content=f"雲霧星奈: {response.reply}"))
-        self.send_unity(response)
+        send_unity(response.reply, response.action, response.emotion)
         save_data = f"{input.name}: {input.input} 雲霧星奈: {response.reply}\n"
+        print(save_data)
         self.add_data_to_vr(self.memory_vr, [save_data])
         with open("./memory.txt", "a", encoding="utf-8") as f:
             f.write(save_data)
@@ -338,32 +504,34 @@ conversation: <conversation>
         last_message = ManagerFormat.model_validate_json(last_message)
 
         # Youtubeにコメント書き込み
+        print(f"マネージャー: {last_message.feedback}")
 
         msg = TalkInput(name="manager", input=last_message.feedback).model_dump_json()
         return {"messages": [msg]}
-    def send_unity(self, data: TalkFormat):
-        url = "http://localhost:5000" # UnityのサーバーのURL
-        payload = {"reply": data.reply, "action": data.action, "emotion": data.emotion}
-        response = requests.post(url, json=payload)
-        # responseが異常なら警告を出す
-        if response.status_code != 200:
-            print(f"Failed to send data to Unity: {response.status_code}")
 
-    def main(self, name:str = None, input:str = None):
-        if name is None or input is None:
-            name, input = self.get_youtube_comment()
-        input = TalkInput(name=name, input=input).model_dump_json()
-        asyncio.run(self.graph.ainvoke({"messages": [input]}))
-        return
-    def get_youtube_comment(self):
-
-        # youtubeのコメントを取得
-        # 何らかの方法でコメントを読み上げる
-
-        name = "ユーザーA"
-        input = "最近流行りのボカロ曲って何かある？"
-        return name, input
+    def main(self):
+        comment = comments_manager.get_random_comment()
+        name, input = comment['author'], comment['text']
+        if name and input:
+            if name != "マネージャー":
+                input = TalkInput(name=name, input=input).model_dump_json()
+                # Unityにコメントを送信
+                send_unity(reply=input, action="Comment", emotion="normal")
+                # ここでフラグを立てる
+                print(f"取得したコメント: {name}: {input}")
+                asyncio.run(self.graph.ainvoke({"messages": [input]}))
+                # Unity側で音声変換を終えたタイミングで次のコメントを取得
+                # http通信を受け取ったらフラグをリセット
 
 if __name__ == "__main__":
+    # YouTubeのライブ配信URL
+    video_url = "https://www.youtube.com/watch?v=4xRbzyHDTrA"  # 実際の配信URLに置き換える
+    # コメント監視を別スレッドで開始
+    monitor_thread = start_comment_monitoring(video_url)
+    # AItuberを開始
     aituber = AItuber()
-    aituber.main()
+    try:
+        while True:
+            aituber.main()
+    except KeyboardInterrupt:
+        print("\n終了します")
