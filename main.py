@@ -21,6 +21,8 @@ import requests
 from youtube import YouTubeLiveChat
 from connect_unity import WebSocketServer
 import time
+import tkinter as tk
+from tkinter import simpledialog
 
 DEBUG = False
 set_debug(DEBUG)
@@ -91,18 +93,19 @@ async def web_search(input: Annotated[str, "what to search for"]) -> str:
         browser=browser,
     )
     move_resize(
-        x=100,
-        y=100,
-        width=1280,
+        x=0, # 要調整
+        y=0,
+        width=1600,
         height=1100
     )
     result = await agent.run()
     return result
 
 class AItuber:
-    def __init__(self, url: str, port: int=5000):
+    def __init__(self, port: int=5000):
         gemini_flash = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.7)
         self.server = WebSocketServer("localhost", port)
+        self.server.start()
         self.youtube = YouTubeLiveChat(self.server)
         tool_list = [think, web_search]
         self.message_history = []
@@ -180,11 +183,11 @@ emotion: <emotion>
     入力が褒め言葉の場合、照れ隠しで怒ったような返事をすること。
     ネットの知識をひけらかすような発言をすること。
     自信過剰な態度を表現すること。
-    感情豊かにリアクションすること。
+    感情豊かにリアクションすること（emotionはnormal以外も使うこと）。
     <emotion>を適切に選択して、発言と感情を一致させること。
     ユーザーとの過去のやり取りを<memory>で参照し、自らの発言との矛盾を避けること。
     センシティブな話題には答えず，うまくごまかす。
-    replayは長くなりすぎないように注意する．
+    replayは長くなり過ぎないようにする事．
 
 例:
 ```input
@@ -263,7 +266,6 @@ conversation: <conversation>
         workflow.add_edge("assist", "talk")
         workflow.add_edge("fix_format", "talk")
         self.graph = workflow.compile()
-        self.youtube.start_monitoring(url)
     def add_history(self, message: BaseMessage):
         if len(self.message_history) >= self.mh_limit:
             self.message_history.pop(0)
@@ -346,30 +348,52 @@ conversation: <conversation>
         print(f"マネージャー: {last_message.feedback}")
         msg = TalkInput(name="manager", input=last_message.feedback).model_dump_json()
         return {"messages": [msg]}
-    def main(self):
+    async def main(self):
         comment = self.youtube.get_random_comment()
+        if comment is None:
+            return
         name, input = comment['author'], comment['text']
         if name and input:
+            if "マネージャー: " in input:
+                return
             self.server.unity_flag = False
             self.server.send_message_to_all(reply=input, action="Message", emotion=name)
             print(f"取得したコメント: {name}: {input}")
             agent_input = TalkInput(name=name, input=input).model_dump_json()
-            asyncio.run(self.graph.ainvoke({"messages": [agent_input]}))
+            await self.graph.ainvoke({"messages": [agent_input]})
             # self.server.unity_flagがTrueになったら関数を抜ける
             while not self.server.unity_flag:
-                time.sleep(1)
-                pass
+                await asyncio.sleep(1)
 
-if __name__ == "__main__":
-    # YouTubeのライブ配信URL
-    video_url = "https://www.youtube.com/watch?v=4xRbzyHDTrA"
-    # AItuberを開始
-    aituber = AItuber(
-        url=video_url,
-        port=5000
-    )
+def get_youtube_url():
+    root = tk.Tk()
+    root.withdraw()  # Hide the main window
+    url = simpledialog.askstring("Input", "YouTube Live配信のURLを入力してください:")
+    return url
+
+async def run_aituber(port: int = 5000):
+    _ = web_search("Go to https://www.google.com/")
+    aituber = AItuber(port=port)
+    url = get_youtube_url()
+    if url is None or url.strip() == "":
+        print("URLが入力されていません。終了します。")
+        return
+    aituber.youtube.start_monitoring(url)
     try:
         while True:
-            aituber.main()
+            await aituber.main()
+            await asyncio.sleep(0.5)
     except KeyboardInterrupt:
         print("\n終了します")
+
+if __name__ == "__main__":
+    # AItuberを開始
+    asyncio.run(run_aituber())
+
+# if __name__ == "__main__":
+#     move_resize(
+#         x=0, # 要調整
+#         y=0,
+#         width=1600,
+#         height=1100
+#     )

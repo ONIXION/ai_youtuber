@@ -76,8 +76,19 @@ pip install langchain_huggingface
 ### Youtube関連
 https://qiita.com/Tomonobu3110/items/24c4e256498e1c4de922
 
-### 使い方
 - OBS Studioをインストール
 
 [こちら](https://obsproject.com/ja/download)からOBS Studioをインストールします．
-- 
+
+
+### 動かし方
+- main.pyを実行する
+- AItuver.exeを実行する
+- Youtubeで配信を開始する
+- OBSでウィンドウの設定をする\
+Chromeの画面をウィンドウキャプチャする.\
+AItuver.exeの画面は`ウィンドウキャプチャ`>`AItuber`>`キャプチャ方法：Windows10`とすること．\
+また，カーソルをキャプチャするのチェックを外す．
+- ウィンドウサイズを調整する・クロマキーを設定する
+- OBSの配信開始ボタンを押す
+- 動画のURLを取得して，ポップアップウィンドウに入力する

@@ -179,6 +179,7 @@ class YouTubeLiveChat:
                             # コメントをスレッドセーフなキューに追加
                             self.comments_manager.add_comment(author, text)
                             # Unityにメッセージを送信
+                            print(f"Comment: {author}: {text}")
                             self.server.send_message_to_all(
                                 reply=text,
                                 action="Comment",
