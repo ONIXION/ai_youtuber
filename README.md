@@ -1,7 +1,7 @@
 # AI Vtuber: AIエージェントによるYoutube配信システム
-![image2](image_data\capture.png)
+![image2](image_data\capture.png?raw=true)
 ## アーキテクチャ
-![image1](image_data\AItuberフロー.drawio.png)
+![image1](image_data\AItuberフロー.drawio.png?raw=true)
 
 1. YouTubeDataAPIを利用してYouTubeからコメントを取得する
 2. コメントをUnityに送信して表示する
@@ -70,7 +70,7 @@ Unity HubからAdd project from diskでプロジェクトを追加できるは�
 配信したことがない場合，配信できるようになるまで１日かかる\
 画面右上の`+作成`から`ライブ配信を開始`を選択．
 
-![image3](image_data\livestream_setup.png)
+![image3](image_data\livestream_setup.png?raw=true)
 
 - OBSでウィンドウの設定をする\
 自動的にChromeが立ち上がるので，その画面をウィンドウキャプチャする.\
