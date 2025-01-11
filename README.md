@@ -58,6 +58,7 @@ OBSとYoutubeを連携させておく（説明は省略）．
 Unityバージョンは2022.3.42f1を使う．\
 Unity HubからAdd project from diskでプロジェクトを追加できるはず．\
 そのままプロジェクトが動作するかは未検証．\
+フォントのサイズが大きくてgitに載らなかったので，[こちら](https://drive.google.com/file/d/1xRp-VVSHNd86f_sLbh7pi-z4gnk9Ft3T/view?usp=sharing)からダウンロードして`AItuber\Assets\Fonts\NotoSansJP-Medium SDF.asset`に配置する．\
 ビルドしてAItuber.exeを作成しておく事．
 - main.pyの35行目前後にchrome.exeのパスを指定する箇所があるので変更する
 
