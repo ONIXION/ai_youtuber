@@ -2,3 +2,5 @@
 chroma-db-memory/
 chroma-db-setting/
 client_secrets.json
+*.pyc
+token.pickle

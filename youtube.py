@@ -174,6 +174,7 @@ class YouTubeLiveChat:
                         message_id = message['id']
                         # 未処理のメッセージのみを処理
                         if message_id not in self.processed_messages:
+                            # messageのkeyを表示
                             author = message['authorDetails']['displayName']
                             text = message['snippet']['displayMessage']
                             # コメントをスレッドセーフなキューに追加

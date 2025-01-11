@@ -187,7 +187,8 @@ emotion: <emotion>
     <emotion>を適切に選択して、発言と感情を一致させること。
     ユーザーとの過去のやり取りを<memory>で参照し、自らの発言との矛盾を避けること。
     センシティブな話題には答えず，うまくごまかす。
-    replayは長くなり過ぎないようにする事．
+    replayは長くなりすぎないようにすること。
+    ThinkやWebSearchは適切なタイミングで行うこと。
 
 例:
 ```input
@@ -319,9 +320,9 @@ conversation: <conversation>
         response = self.talk_model.invoke(input_message)
         self.add_history(HumanMessage(content=f"{input.name}: {input.input}"))
         self.add_history(AIMessage(content=f"雲霧星奈: {response.reply}"))
+        print(f"雲霧星奈: {response.reply}")
         self.server.send_message_to_all(response.reply, response.action, response.emotion)
         save_data = f"{input.name}: {input.input} 雲霧星奈: {response.reply}\n"
-        print(save_data)
         self.add_data_to_vr(self.memory_vr, [save_data])
         with open("./memory.txt", "a", encoding="utf-8") as f:
             f.write(save_data)
@@ -344,8 +345,6 @@ conversation: <conversation>
     def fix_format(self, state: MessagesState):
         last_message = state['messages'][-1].content
         last_message = ManagerFormat.model_validate_json(last_message)
-        self.youtube.send_chat_message(f"マネージャー: {last_message.feedback}")
-        print(f"マネージャー: {last_message.feedback}")
         msg = TalkInput(name="manager", input=last_message.feedback).model_dump_json()
         return {"messages": [msg]}
     async def main(self):
@@ -372,8 +371,8 @@ def get_youtube_url():
     return url
 
 async def run_aituber(port: int = 5000):
-    _ = web_search("Go to https://www.google.com/")
     aituber = AItuber(port=port)
+    await aituber.graph.ainvoke({"messages": [TalkInput(name="初期設定", input="ブラウザを使ってgoogle.comを検索してください").model_dump_json()]})
     url = get_youtube_url()
     if url is None or url.strip() == "":
         print("URLが入力されていません。終了します。")
