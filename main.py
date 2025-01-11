@@ -116,11 +116,11 @@ class AItuber:
         self.setting_vr = self.create_vector_retriever(top_k=1, path="./chroma-db-setting")
         self.memory_vr = self.create_vector_retriever(top_k=3, path="./chroma-db-memory")
         # setting.txtのデータをvector_retrieverに追加
-        with open("./setting.txt", "r", encoding='utf-8') as f:
+        with open("./text_data/setting.txt", "r", encoding='utf-8') as f:
             setting_texts = f.read().splitlines()
             self.add_data_to_vr(self.setting_vr, setting_texts)
         # memory.txtのデータをvector_retrieverに追加
-        with open("./memory.txt", "r", encoding='utf-8') as f:
+        with open("./text_data/memory.txt", "r", encoding='utf-8') as f:
             memory_texts = f.read().splitlines()
             self.add_data_to_vr(self.memory_vr, memory_texts)
         # TalkModelの設定
@@ -326,7 +326,7 @@ conversation: <conversation>
         self.server.send_message_to_all(response.reply, response.action, response.emotion)
         save_data = f"{input.name}: {input.input} 雲霧星奈: {response.reply}\n"
         self.add_data_to_vr(self.memory_vr, [save_data])
-        with open("./memory.txt", "a", encoding="utf-8") as f:
+        with open("./text_data/memory.txt", "a", encoding="utf-8") as f:
             f.write(save_data)
         response = response.model_dump_json()
         return {"messages": [response]}

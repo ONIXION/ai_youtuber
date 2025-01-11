@@ -4,3 +4,5 @@ chroma-db-setting/
 client_secrets.json
 *.pyc
 token.pickle
+.vscode
+AItuber/Assets/Fonts/NotoSansJP-Medium SDF.asset

@@ -1,94 +1,85 @@
-# AITuber
-### アーキテクチャ
-https://app.diagrams.net/#G1iLug5D_uOQoOh8EOPjuQBjL6lOTSvr2I#%7B%22pageId%22%3A%22Wsucz42x5W8DNMzrabuT%22%7D
+# AI Vtuber: AIエージェントによるYoutube配信システム
+![image2](image_data\capture.png)
+## アーキテクチャ
+![image1](image_data\AItuberフロー.drawio.png)
 
-### 全体の流れ
-あるコードを実行すると，Unityのアプリとブラウザが実行され，その画面をキャプチャしてYoutubeに配信を始める．
-前回の応答として入力されたコメント以降のコメントをランダムに抽選する。
-Talk ModelはコメントとRAGの結果を入力としてテキストを出力する．
-Talk Modelに対する入出力をAssist Modelに入力して，アクションを決定する（指摘，なにもしない，Web，思考）
-それと同時にテキストを音声に変換して，変換終了後に，文字と音声を同時に表示する．
-Assist Modelのアクションによってキャラクターの動作が変化する．何もしない，を選択した場合は次のコメントを受け取る．
-指摘，を選択した場合は，Talk Modelに話しかける．
-Web検索，を選択した場合はWeb Modelが動いてブラウジングをする．その結果をTalk Model（もしくは間にAssist Modelを入れる）に伝える
-思考，を選択した場合はThinking Modelが動いて思考する．その結果をTalk Model（もしくは間にAssist Modelを入れる）に伝える
-以上の動作を繰り返す．
+1. YouTubeDataAPIを利用してYouTubeからコメントを取得する
+2. コメントをUnityに送信して表示する
+3. ランダムにコメントを抽選してUnityに送る
+4. コメントを棒読みちゃんで読み上げる
+5. Talk ModelがコメントとRAGを入力としてテキストを出力する
+6. テキストをUnityに送り，AivisSpeechで音声に変換する
+7. Talk Modelがアクションを指定した場合，Assist Model（=Agent）を呼び出してタスクを実行する
+8. Talk Modelが出力したアクションや感情によってUnityのキャラクターの振舞いが変化する
 
-### 必要な技術
-- モデルのプロンプトや対話を評価
-- Youtubeコメント取得
-- PythonとUnity間の通信（動作コマンドとか，テキストとか）
-- UnityでAvisSpeechを使う
-- Unityキャラモーション(音声のピッチや大きさに応じて体を揺らす（縦・横）)
-- Unityリップシンク
-- Youtube配信の実行
-- キャラ設定を作りこむ
-- Unityのexe化
-- PythonからUnity起動
-↓優先度低め
-- PythonからOBS APIで配信
-- PythonからStream APIで配信作成
-- browser-useのdeepseek対応 https://hamaruki.com/deepseek-v3-browser-use-webui/
+## エージェントシステム
+- Talk Model\
+RAGでキャラ設定や会話履歴を与えられる．\
+通常の返答に加えて，感情や行動を出力する．
 
-### LLM
-- Talk Model
-FT済みのGPT-4oを使う．
-Talk Modelはプロンプトにより，Assist Modelの指摘は素直に受け取るようになっている．
-また，プロンプトで思考が必要な場合は，それをほのめかすような発言を行うように設定されている（もう少し考えてみる，など）
-知識が必要な場合は，それをほのめかすような発言を行う（ちょっと調べてみるね，など）
-RAGでキャラ設定や会話履歴を与えられる．
-感情を出力
-
-- Assist Model
-Gemini 2.0 flash
-Talk Modelの入力と発言が与えられ，それに対して指摘を行う．
-もしくは，検索や深い思考が必要と判断した場合は，Web ModelやThinking Modelに指示を与える
-RAGでTalk Modelのキャラ設定を与えられている．
-- Web Model
-gpt-4o-mini
+- Assist Model\
+Talk Modelの出力の行動がNothingではなかった場合に呼び出される．\
+browser-useとThinking Modelをツールとして与えられたエージェントとなっており，Talk Modelが指定した行動に応じて，文脈を読んでタスクを実行する．
+- BrowserUse\
 Assist Modelの指示によりWebブラウジングをして，その結果を報告する
-- Thinking Model
-Gemini Thinking
+- Thinking Model\
 Assist Modelの指示により，より深い思考を行い，その結果を報告する
 
-### setup
+## セットアップ
+- リポジトリのダウンロード
+```
+git clone https://github.com/ONIXION/ai_youtuber.git -b delete_manager
+cd ai_youtuber
+```
+- Python環境の構築
 ```
 conda create -n ai_tuber python=3.12
 conda activate ai_tuber
-pip install langchain
-pip install langchain_openai
-pip install langchain_google_genai
-pip install langgraph
-pip install google-generativeai
-pip install python-dotenv
-pip install browser-use
-playwright install
-pip install langchain_community
-winget install Microsoft.VisualStudio.2022.BuildTools
-pip install chromadb
-pip install langchain_chroma
-pip install sentence-transformers
-pip install sentencepiece
-pip install langchain_huggingface
+pip install -r requirements.txt
 ```
-`.env`ファイルを作成し，ルートに配置
-
-### Youtube関連
-https://qiita.com/Tomonobu3110/items/24c4e256498e1c4de922
-
-- OBS Studioをインストール
-
-[こちら](https://obsproject.com/ja/download)からOBS Studioをインストールします．
-
+- 環境変数の準備\
+`.env`ファイルを作成し，ルート（`ai_youtuber/`）に配置\
+中に環境変数を書き込む．（適宜追加すること）
+```
+OPENAI_API_KEY='sk-xxxxxxxxxxxxxxxxxxxxxxxxx'
+GOOGLE_API_KEY='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+```
+- client_secrets.json\
+[ここらへん](https://qiita.com/Tomonobu3110/items/24c4e256498e1c4de922)のサイトを参考にしてYouTubeDataAPIv3を使えるようにする．\
+途中で認証情報をダウンロードする所があるので，そこでダウンロードしたjsonファイルを`client_secrets.json`と名前を変更してルートに配置する．
+- AivisSpeechのインストール\
+[こちら](https://aivis-project.com/#products-aivisspeech)からダウンロードしてインストール．
+- 棒読みちゃんのインストール\
+[こちら](https://chi.usamimi.info/Program/Application/BouyomiChan/)からダウンロードしてインストール.
+- OBS Studioをインストール\
+[こちら](https://obsproject.com/ja/download)からOBS Studioをインストール.\
+OBSとYoutubeを連携させておく（説明は省略）．
+- Unityのセットアップ\
+Unityバージョンは2022.3.42f1を使う．\
+Unity HubからAdd project from diskでプロジェクトを追加できるはず．\
+そのままプロジェクトが動作するかは未検証．\
+ビルドしてAItuber.exeを作成しておく事．
+- main.pyの35行目前後にchrome.exeのパスを指定する箇所があるので変更する
 
 ### 動かし方
 - main.pyを実行する
+- AivisSpeechとBouyomiChanを起動する
 - AItuver.exeを実行する
-- Youtubeで配信を開始する
+- Youtubeで配信を開始する\
+配信したことがない場合，配信できるようになるまで１日かかる\
+画面右上の`+作成`から`ライブ配信を開始`を選択．
+
+![image3](image_data\livestream_setup.png)
+
 - OBSでウィンドウの設定をする\
-Chromeの画面をウィンドウキャプチャする.\
-AItuver.exeの画面は`ウィンドウキャプチャ`>`AItuber`>`キャプチャ方法：Windows10`とすること．\
-また，カーソルをキャプチャするのチェックを外す．
-- ウィンドウサイズを調整する・クロマキーを設定する
+自動的にChromeが立ち上がるので，その画面をウィンドウキャプチャする.\
+その後，AItuver.exeの画面を`ウィンドウキャプチャ`>`AItuber`>`キャプチャ方法：Windows10`でキャプチャする．
+また，`カーソルをキャプチャする`のチェックを外しておくと良い．
+- クロマキーを設定する\
+AItuber.exeのウィンドウキャプチャを右クリック>フィルタ>エフェクトフィルタ>クロマキーを追加する.
+- ウィンドウ配置を調整する\
+Chromeの画面がAItuber.exeのクロマキーで抜いた部分に来るように配置する．\
+この時，Chromeのレイヤが最背面に来るようにする．
 - OBSの配信開始ボタンを押す
-- 動画のURLを取得して，ポップアップウィンドウに入力する
+- Youtubeの配信画面から動画のURLを取得して，ポップアップウィンドウに入力する\
+このURLはYoutubeStudioに表示されるものではなく，Youtubeの一般の配信画面のURLである必要がある．
