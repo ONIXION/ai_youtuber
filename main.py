@@ -28,12 +28,13 @@ DEBUG = False
 set_debug(DEBUG)
 set_verbose(DEBUG)
 
-browser = Browser(
-	config=BrowserConfig(
-		headless=False,
-		chrome_instance_path="C:\Program Files\Google\Chrome\Application\chrome.exe",
-	)
-)
+def create_browser():
+    return Browser(
+        config=BrowserConfig(
+            headless=False,
+            chrome_instance_path="C:\Program Files\Google\Chrome\Application\chrome.exe",
+        )
+    )
 controller = Controller()
 
 class TalkInput(BaseModel):
@@ -72,19 +73,19 @@ async def think(input: Annotated[str, "what to think about"]) -> str:
     think_prompt = ChatPromptTemplate.from_messages([
         SystemMessage(content="""
 Think deeply about the input and generate an appropriate response.
-Be careful not to make your response too long.
 """
         ),
         MessagesPlaceholder(variable_name="messages")
     ])
     think_model = think_prompt | gemini_think
-    message = [HumanMessage(content=input)]
+    message = [HumanMessage(content="Input: " + input)]
     response = await think_model.ainvoke({"messages": message})
     return response.content
 
 @tool
 async def web_search(input: Annotated[str, "what to search for"]) -> str:
     """Search the web for the input."""
+    browser = create_browser()
     model = ChatOpenAI(model='gpt-4o')
     agent = Agent(
         task=input,
@@ -162,8 +163,8 @@ emotion: <emotion>
     reply: inputされた内容に対する応答テキスト。
     action: inputに対する行動。以下のいずれかから選択:
         Nothing: とくに何もしない
-        Think: 現在の話題について深く考える
-        WebSearch: 現在の話題についてウェブ検索する
+        Think: 現在の話題についてより深く考える．既知の情報に関する考察や，難しい計算などに有効．
+        WebSearch: 現在の話題についてブラウザを使って調査する．何か知りたい情報がある時に有効．
     emotion: 現在のあなたの感情。以下のいずれかから選択:
         normal: 通常
         happy: 嬉しい
@@ -183,7 +184,7 @@ emotion: <emotion>
     <emotion>を適切に選択して、発言と感情を一致させること。
     ユーザーとの過去のやり取りを<memory>で参照し、自らの発言との矛盾を避けること。
     センシティブな話題には答えず，うまくごまかす。
-    replayは長くなりすぎないようにすること。
+    replayは長くならないようにすること。
     ThinkやWebSearchは適切なタイミングで行うこと。
 
 例:
@@ -219,8 +220,9 @@ emotion: excited
         assist_prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content="""
 会話の流れを読み取り，指定されたツールを呼び出してください．
-ツールに対してはできるだけ具体的な指示を行ってください．
-また，最終的な出力は日本語で簡潔に行ってください．
+WebSearchを呼び出す際は，行うタスクを具体的に指定する必要があります．（例：Nvidiaの最新の株価について調べてください）
+Thinkを呼び出す際は，思考する内容を具体的に指定する必要があります．（例：2の32乗がどのような値になるのか考えてください）
+また，最終的な出力は日本語で要点を纏めて，簡潔に行ってください．
 
 モデルへの入力形式:
 ```input
@@ -292,6 +294,7 @@ conversation: <conversation>
     def talk_cond_func(self, state: MessagesState) -> Literal["assist", END]:
         last_message = state['messages'][-1].content
         last_message = TalkFormat.model_validate_json(last_message)
+        print(f"action: {last_message.action}")
         if last_message.action == "Think" or last_message.action == "WebSearch":
             return "assist"
         return END
@@ -305,6 +308,7 @@ conversation: <conversation>
     def call_talk_model(self, state: MessagesState):
         last_msg = state['messages'][-1].content
         input = TalkInput.model_validate_json(last_msg)
+        print(f"{input.name}: {input.input}")
         input.input = input.input.replace("\n", "")
         setting_docs = self.setting_vr.invoke(input.input)
         memory_docs = self.memory_vr.invoke(input.input)
@@ -327,7 +331,7 @@ conversation: <conversation>
         response = response.model_dump_json()
         return {"messages": [response]}
     async def call_assist_model(self, state: MessagesState):
-        conversation = self.get_history()
+        conversation = self.get_history(length=2)
         last_message = state['messages'][-1].content
         last_message = TalkFormat.model_validate_json(last_message)
         input = {"input": [HumanMessage(content=f"tool: {last_message.action}\nconversation: {conversation}")]}
@@ -355,7 +359,7 @@ conversation: <conversation>
                 return
             self.server.unity_flag = False
             self.server.send_message_to_all(reply=input, action="Message", emotion=name)
-            print(f"取得したコメント: {name}: {input}")
+            # print(f"取得したコメント: {name}: {input}")
             agent_input = TalkInput(name=name, input=input).model_dump_json()
             await self.graph.ainvoke({"messages": [agent_input]})
             # self.server.unity_flagがTrueになったら関数を抜ける
@@ -370,7 +374,8 @@ def get_youtube_url():
 
 async def run_aituber(port: int = 5000):
     aituber = AItuber(port=port)
-    await aituber.graph.ainvoke({"messages": [TalkInput(name="初期設定", input="ブラウザを使ってgoogle.comを検索してください").model_dump_json()]})
+    agent_input = TalkInput(name="初期設定", input="Nvidiaの株価について調べて").model_dump_json()
+    await aituber.graph.ainvoke({"messages": [agent_input]})
     url = get_youtube_url()
     if url is None or url.strip() == "":
         print("URLが入力されていません。終了します。")
