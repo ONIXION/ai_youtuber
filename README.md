@@ -62,7 +62,7 @@ Unity HubからAdd project from diskでプロジェクトを追加できるは�
 ビルドしてAItuber.exeを作成しておく事．
 - main.pyの35行目前後にchrome.exeのパスを指定する箇所があるので変更する
 
-### 動かし方
+## 動かし方
 - main.pyを実行する
 - AivisSpeechとBouyomiChanを起動する
 - AItuver.exeを実行する
@@ -84,3 +84,34 @@ Chromeの画面がAItuber.exeのクロマキーで抜いた部分に来るよう
 - OBSの配信開始ボタンを押す
 - Youtubeの配信画面から動画のURLを取得して，ポップアップウィンドウに入力する\
 このURLはYoutubeStudioに表示されるものではなく，Youtubeの一般の配信画面のURLである必要がある．
+
+## ファイル構造
+```
+ai_youtuber/
+├── main.py               # メインスクリプト（配信システムのエントリーポイント）
+├── youtube.py           # YouTube API関連の処理
+├── connect_unity.py     # Unity連携用スクリプト（WebSocket実装）
+├── requirements.txt     # Pythonパッケージの依存関係
+│
+├── AItuber/            # Unityプロジェクト
+│   ├── Assets/
+│   │   ├── Scripts/    # Unityスクリプト（C#）
+│   │   │   ├── AivisSpeech.cs      # 音声合成
+│   │   │   ├── AutoBlink.cs        # 瞬き制御
+│   │   │   ├── DisplayComment.cs   # コメント表示
+│   │   │   ├── WebSocketClient.cs  # WebSocket通信
+│   │   │   └── ...
+│   │   └── ...         # その他アセット（モデル、アニメーション等）
+│   │
+│   ├── Packages/       # Unityパッケージ
+│   └── ProjectSettings/# Unityプロジェクト設定
+│
+├── image_data/         # ReadMe用の画像データ保存ディレクトリ
+│   └── ...
+│
+├── text_data/          # テキストデータ保存ディレクトリ
+│   ├── memory.txt      # 会話履歴
+│   └── setting.txt     # 設定ファイル
+│
+└── chroma-db-*/        # ChromaDBのデータベースファイル
+```
