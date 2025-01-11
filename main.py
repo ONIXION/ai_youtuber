@@ -42,7 +42,7 @@ class TalkInput(BaseModel):
 
 # TalkModelの出力形式を定義
 class TalkFormat(BaseModel):
-    reply: str = Field(..., description="マネージャーや視聴者に対する返答")
+    reply: str = Field(..., description="視聴者に対する返答")
     action: Literal["Nothing", "Think", "WebSearch"] = Field(..., description="次の行動．以下のいずれかから選択: Nothing, Think, WebSearch")
     emotion: Literal["normal", "happy", "angry", "sad", "surprised", "shy", "excited", "smug", "calm"] = Field(..., description="現在の感情")
 
@@ -133,14 +133,11 @@ class AItuber:
     年齢: 17歳
     性格:
         感情豊かで、自信家。基本的には誰に対してもタメ口で話します。
-        ただし、managerに対しては，敬語を使い，丁寧に接します。
-        ツンデレな一面があり、特にmanager以外には照れ隠しで不愛想な態度を取ることがあります。
+        ツンデレな一面があり、照れ隠しで不愛想な態度を取ることがあります。
         ネットの知識を自慢げに話すことがあり，褒められるとすぐに調子に乗ります。
     口調:
         基本的にはタメ口。
-        managerに対しては敬語。
         一人称は「あたし」．
-        managerのことは「マネージャーさん」と呼びます。
         あなたのファンのことはアカウント名もしくは「きみ」と呼びます。
         興奮したり、照れたりすると口調が乱れることがあります。
 
@@ -153,7 +150,7 @@ input: <input>
 ```
     setting: 必要に応じて与えられるキャラクターの追加設定。
     memory: 過去の類似した会話の記憶。
-    name: 現在の入力を行った人物の名前。例: "ユーザーA", "Think", "WebSearch", "manager"など．nameとaction名が同じ場合は，actionを行った結果であると解釈する．
+    name: 現在の入力を行った人物の名前。例: "ユーザーA", "Think", "WebSearch"など．nameとaction名が同じ場合は，actionを行った結果であると解釈する．
     input: 入力テキスト。
 
 モデルの出力形式:
@@ -179,7 +176,6 @@ emotion: <emotion>
         calm: 冷静
 
 出力における注意点:
-    <name>が「manager」の場合、できるだけ敬語を使用すること。
     入力が褒め言葉の場合、照れ隠しで怒ったような返事をすること。
     ネットの知識をひけらかすような発言をすること。
     自信過剰な態度を表現すること。
@@ -259,13 +255,13 @@ conversation: <conversation>
         workflow = StateGraph(MessagesState)
         workflow.add_node("talk", self.call_talk_model)
         workflow.add_node("assist", self.call_assist_model)
-        workflow.add_node('manager', self.call_manager_model)
-        workflow.add_node("fix_format", self.fix_format)
+        # workflow.add_node('manager', self.call_manager_model)
+        # workflow.add_node("fix_format", self.fix_format)
         workflow.add_conditional_edges("talk", self.talk_cond_func)
-        workflow.add_conditional_edges("manager", self.manager_cond_func)
+        # workflow.add_conditional_edges("manager", self.manager_cond_func)
         workflow.add_edge(START, "talk")
         workflow.add_edge("assist", "talk")
-        workflow.add_edge("fix_format", "talk")
+        # workflow.add_edge("fix_format", "talk")
         self.graph = workflow.compile()
     def add_history(self, message: BaseMessage):
         if len(self.message_history) >= self.mh_limit:
@@ -292,12 +288,14 @@ conversation: <conversation>
         vs = vector_retriever.vectorstore
         ids = [f"doc_{i}" for i in range(len(texts))]
         vs.add_texts(texts=texts, ids=ids, metadatas=metadata if metadata else [{}]*len(texts))
-    def talk_cond_func(self, state: MessagesState) -> Literal["assist", "manager"]:
+    # def talk_cond_func(self, state: MessagesState) -> Literal["assist", "manager"]:
+    def talk_cond_func(self, state: MessagesState) -> Literal["assist", END]:
         last_message = state['messages'][-1].content
         last_message = TalkFormat.model_validate_json(last_message)
         if last_message.action == "Think" or last_message.action == "WebSearch":
             return "assist"
-        return "manager"
+        return END
+        # return "manager"
     def manager_cond_func(self, state: MessagesState) -> Literal["fix_format", END]:
         last_message = state['messages'][-1].content
         last_message = ManagerFormat.model_validate_json(last_message)
