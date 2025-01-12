@@ -8,6 +8,7 @@ dependencies = [
     "aiohappyeyeballs>=2.4.4",
     "aiohttp>=3.11.11",
     "browser-use>=0.1.19",
+    "google-auth-oauthlib>=1.2.1",
     "langchain-chroma>=0.2.0",
     "langchain-google-genai>=2.0.8",
     "langchain-huggingface>=0.1.2",
