@@ -1,8 +1,19 @@
+# env
+.venv/
+.vscode/
 .env
+token.pickle
+
+# Cahce
+__pycache__/
+*.pyc
+
+# Unity
+AItuber/Assets/Fonts/NotoSansJP-Medium SDF.asset
+
+# Other
 chroma-db-memory/
 chroma-db-setting/
 client_secrets.json
-*.pyc
-token.pickle
 .vscode
 AItuber/Assets/Fonts/NotoSansJP-Medium SDF.asset
