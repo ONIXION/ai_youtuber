@@ -1,6 +1,6 @@
 import logging
 from logging import Formatter, StreamHandler, getLogger
-from typing import List
+from typing import Any, List
 
 import chromadb
 import japanize_matplotlib
@@ -93,19 +93,28 @@ class UmapReducer(Runnable[List[List[float]], np.ndarray]):
         return result
 
 
-def plot_embeddings(embeddings_2d: np.ndarray, texts: List[str]) -> None:
+def plot_embeddings(
+    embeddings_2d: np.ndarray, texts: List[str], ax: Any, scatter: Any
+) -> Any:
     if embeddings_2d.size == 0:
-        print("プロットするデータがありません。")
+        logger.warning("プロットするデータがありません。")
         return
-    plt.figure(figsize=(8, 6))
-    plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], c="blue")
+    ax.clear()
+    scatter = ax.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], c="blue")
     for i, txt in enumerate(texts):
-        plt.annotate(txt, (embeddings_2d[i, 0], embeddings_2d[i, 1]))
-    plt.title("UMAP projection")
-    plt.show()
+        ax.annotate(txt, (embeddings_2d[i, 0], embeddings_2d[i, 1]))
+    ax.set_title("UMAP projection")
+    plt.draw()
+    plt.pause(0.001)  # 描画をリフレッシュ
+    return scatter
 
 
 if __name__ == "__main__":
+    # インタラクティブモードの有効化
+    plt.ion()
+    fig, ax = plt.subplots(figsize=(10, 8))
+    scatter = None  # 初期化
+
     # メモリを初期化し、サンプルデータを追加
     memory = EmbeddingMemory()
     sample_data = [
@@ -133,6 +142,12 @@ if __name__ == "__main__":
         first=embedding_runnable, middle=[merge_runnable], last=reduce_runnable
     )
 
+    # 初回のプロット
+    all_embeddings = memory.get_embeddings()
+    all_texts = memory.get_texts()
+    embeddings_2d = reduce_runnable.invoke(all_embeddings)
+    scatter = plot_embeddings(embeddings_2d, all_texts, ax, scatter)
+
     while True:
         text = input("文字列を入力してください ('exit' で終了): ")
         if text.strip().lower() == 'exit':
@@ -142,4 +157,8 @@ if __name__ == "__main__":
         result = chain.invoke([text])
         memory.add_texts([text])
         print("次元削減結果:", result)
-        plot_embeddings(result, memory.get_texts())
+        scatter = plot_embeddings(result, memory.get_texts(), ax, scatter)
+
+    # インタラクティブモードのオフ
+    plt.ioff()
+    plt.show()
