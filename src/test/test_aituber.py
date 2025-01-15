@@ -6,8 +6,15 @@ import pytest
 from src.ai_tuber import AItuber, TalkFormat, TalkInput
 
 
+def aituber_response_callback(response: str) -> None:
+    message = TalkFormat.model_validate_json(response)
+    print(f"AI callback: {message.reply}")
+    print(f"AI callback: {message.emotion}")
+    print(f"AI callback: {message.action}")
+
+
 async def console_app() -> None:
-    aituber = AItuber()
+    aituber = AItuber(response_callback=aituber_response_callback)
     while True:
         user_input = input("ユーザー: ")
         if user_input.strip().lower() in ["exit", "quit"]:

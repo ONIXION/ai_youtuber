@@ -103,7 +103,7 @@ async def web_search(input: Annotated[str, "what to search for"]) -> Any:
 
 
 class AItuber:
-    def __init__(self) -> None:
+    def __init__(self, response_callback: TalkFormat | None = None) -> None:
         # パラメータ設定
         gemini_flash = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash-exp", temperature=0.7
@@ -119,6 +119,10 @@ class AItuber:
         self.memory_vr = self._create_vector_retriever(
             top_k=3, path="./chroma-db-memory"
         )
+
+        # コールバック関数
+        self.response_callback = response_callback
+
         # setting.txtのデータをvector_retrieverに追加
         with open("./text_data/setting.txt", "r", encoding='utf-8') as f:
             setting_texts = f.read().splitlines()
@@ -230,6 +234,11 @@ class AItuber:
         with open("./text_data/memory.txt", "a", encoding="utf-8") as f:
             f.write(save_data)
         response = response.model_dump_json()
+
+        # コールバック関数が設定されている場合は実行
+        if self.response_callback:
+            self.response_callback(response)
+
         return {"messages": [response]}
 
     async def call_assist_model(self, state: MessagesState) -> dict:
