@@ -11,12 +11,14 @@ class WebSocketServer:
         self.host = host
         self.port = port
         self.clients: Set[WebSocketServerProtocol] = set()
-        self.server = None
+        self.server: serve | None = None
         self._server_thread: Optional[threading.Thread] = None
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self.unity_flag = False  # これがTrueの時だけコメントを抽選
 
-    async def _handle_client(self, websocket: WebSocketServerProtocol, path: str):
+    async def _handle_client(
+        self, websocket: WebSocketServerProtocol, path: str
+    ) -> None:
         """クライアント接続を処理するコルーチン"""
         try:
             # クライアントを登録
@@ -74,18 +76,18 @@ class WebSocketServer:
                 self.clients.remove(websocket)
             print(f"Client disconnected. Total clients: {len(self.clients)}")
 
-    def start(self):
+    def start(self) -> None:
         """サーバーを別スレッドで開始"""
         if self._server_thread is not None:
             print("Server is already running")
             return
 
-        def run_server():
+        def run_server() -> None:
             try:
                 self._loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(self._loop)
 
-                async def start_ws_server():
+                async def start_ws_server() -> None:
                     self.server = await serve(self._handle_client, self.host, self.port)
                     print(f"WebSocket server started at ws://{self.host}:{self.port}")
                     await self.server.wait_closed()
@@ -101,12 +103,12 @@ class WebSocketServer:
         self._server_thread = threading.Thread(target=run_server, daemon=True)
         self._server_thread.start()
 
-    def stop(self):
+    def stop(self) -> None:
         """サーバーを停止"""
         if self._loop is None:
             return
 
-        async def cleanup():
+        async def cleanup() -> None:
             if self.server:
                 self.server.close()
                 await self.server.wait_closed()
@@ -123,7 +125,7 @@ class WebSocketServer:
 
     async def _send_message(
         self, client: WebSocketServerProtocol, reply: str, action: str, emotion: str
-    ):
+    ) -> None:
         """単一のクライアントにメッセージを送信"""
         if client is None or client.closed:
             print("Cannot send message - client is disconnected")
@@ -136,13 +138,13 @@ class WebSocketServer:
             print(f"Failed to send message: {str(e)}")
             self.clients.discard(client)
 
-    def send_message_to_all(self, reply: str, action: str, emotion: str):
+    def send_message_to_all(self, reply: str, action: str, emotion: str) -> None:
         """全クライアントにメッセージを送信"""
         if self._loop is None or not self._loop.is_running():
             print("Server is not running")
             return
 
-        async def broadcast():
+        async def broadcast() -> None:
             if not self.clients:
                 print("No connected clients")
                 return

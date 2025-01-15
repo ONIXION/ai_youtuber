@@ -4,6 +4,7 @@ import random
 import threading
 import time
 from collections import deque
+from typing import Any
 
 from dotenv import load_dotenv
 from google.auth.transport.requests import Request
@@ -17,18 +18,18 @@ load_dotenv()
 
 
 class ThreadSafeComments:
-    def __init__(self, maxlen=1000):
-        self.comments = deque(maxlen=maxlen)
+    def __init__(self, maxlen: int = 1000) -> None:
+        self.comments: deque[dict] = deque(maxlen=maxlen)
         self.lock = threading.Lock()
         self.last_accessed_time = time.time()
 
-    def add_comment(self, author, text):
+    def add_comment(self, author: str, text: str) -> None:
         with self.lock:
             self.comments.append(
                 {'author': author, 'text': text, 'timestamp': time.time()}
             )
 
-    def get_random_comment(self):
+    def get_random_comment(self) -> dict | None:
         with self.lock:
             if not self.comments:
                 return None
@@ -50,17 +51,17 @@ class ThreadSafeComments:
 
 
 class YouTubeLiveChat:
-    def __init__(self, server: WebSocketServer, max_comments=1000):
+    def __init__(self, server: WebSocketServer, max_comments: int = 1000) -> None:
         """YouTubeライブチャット監視クラスの初期化"""
         self.comments_manager = ThreadSafeComments(maxlen=max_comments)
         self.youtube = self._initialize_youtube_api()
-        self.monitoring_thread = None
+        self.monitoring_thread: threading.Thread | None = None
         self.is_monitoring = False
-        self.processed_messages = set()
+        self.processed_messages: set[dict] = set()
         self.server = server
         self.live_chat_id = None
 
-    def _initialize_youtube_api(self):
+    def _initialize_youtube_api(self) -> build:
         """YouTube APIクライアントの初期化"""
         # OAuth2の認証情報を読み込む
         credentials = None
@@ -87,11 +88,11 @@ class YouTubeLiveChat:
 
         return build('youtube', 'v3', credentials=credentials)
 
-    def send_chat_message(self, message_text):
+    def send_chat_message(self, message_text: str) -> dict | None:
         """ライブチャットにメッセージを送信"""
         if not self.live_chat_id:
             print("ライブチャットIDが取得できていません。")
-            return
+            return None
         try:
             request = self.youtube.liveChatMessages().insert(
                 part="snippet",
@@ -113,7 +114,7 @@ class YouTubeLiveChat:
             print(f"予期せぬエラー: {e}")
             raise
 
-    def _get_live_chat_id(self, video_id):
+    def _get_live_chat_id(self, video_id: str) -> str:
         """動画IDからライブチャットIDを取得"""
         try:
             response = (
@@ -132,6 +133,8 @@ class YouTubeLiveChat:
             if not live_chat_id:
                 raise ValueError("ライブチャットIDが取得できません。")
             self.live_chat_id = live_chat_id
+
+            assert isinstance(live_chat_id, str)
             return live_chat_id
         except HttpError as e:
             print(f"APIエラー: {e}")
@@ -140,7 +143,7 @@ class YouTubeLiveChat:
             print(f"エラー: {e}")
             raise
 
-    def _get_live_chat_messages(self, live_chat_id, page_token=None):
+    def _get_live_chat_messages(self, live_chat_id: str, page_token: Any = None) -> Any:
         """ライブチャットのメッセージを取得"""
         try:
             return (
@@ -159,7 +162,7 @@ class YouTubeLiveChat:
             print(f"エラー: {e}")
             raise
 
-    def _monitor_live_chat(self, video_url, message_callback=None):
+    def _monitor_live_chat(self, video_url: str, message_callback: Any = None) -> None:
         """
         ライブチャットを継続的にモニタリング
         Args:
@@ -220,11 +223,13 @@ class YouTubeLiveChat:
             print(f"予期せぬエラーが発生しました: {e}")
             raise
 
-    def start_monitoring(self, video_url, message_callback=None):
+    def start_monitoring(
+        self, video_url: str, message_callback: Any = None
+    ) -> threading.Thread | None:
         """コメント監視を開始する"""
         if self.monitoring_thread and self.monitoring_thread.is_alive():
             print("既にモニタリングが実行中です。")
-            return
+            return None
 
         self.is_monitoring = True
         self.monitoring_thread = threading.Thread(
@@ -235,13 +240,13 @@ class YouTubeLiveChat:
         self.monitoring_thread.start()
         return self.monitoring_thread
 
-    def stop_monitoring(self):
+    def stop_monitoring(self) -> None:
         """コメント監視を停止する"""
         self.is_monitoring = False
         if self.monitoring_thread:
             self.monitoring_thread.join()
             print("モニタリングを停止しました。")
 
-    def get_random_comment(self):
+    def get_random_comment(self) -> dict | None:
         """ランダムなコメントを取得する"""
         return self.comments_manager.get_random_comment()
