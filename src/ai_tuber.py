@@ -45,9 +45,6 @@ def create_browser() -> Browser:
     )
 
 
-controller = Controller()
-
-
 # 入力形式を定義
 class TalkInput(BaseModel):
     name: str
@@ -98,7 +95,7 @@ async def web_search(input: Annotated[str, "what to search for"]) -> Any:
     agent = Agent(
         task=input,
         llm=model,
-        controller=controller,
+        controller=Controller(),
         browser=browser,
     )
     result = await agent.run()
