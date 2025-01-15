@@ -27,13 +27,17 @@ set_debug(DEBUG)
 set_verbose(DEBUG)
 
 # ログの設定
-logger = getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler_format = Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-stream_handler = StreamHandler()
-stream_handler.setLevel(logging.DEBUG)
-stream_handler.setFormatter(handler_format)
-logger.addHandler(stream_handler)
+if __name__ == "__main__":
+    logger = getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    handler_format = Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    stream_handler = StreamHandler()
+    stream_handler.setLevel(logging.DEBUG)
+    stream_handler.setFormatter(handler_format)
+    logger.addHandler(stream_handler)
+else:
+    logger = getLogger("__main__")
+    logger.setLevel(logging.WARNING)
 
 
 def create_browser() -> Browser:
