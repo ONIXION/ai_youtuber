@@ -9,6 +9,7 @@ token.pickle
 __pycache__/
 *.pyc
 .mypy_cache/
+.pytest_cache/
 
 # Unity
 AItuber/Assets/Fonts/NotoSansJP-Medium SDF.asset
