@@ -1,12 +1,13 @@
 # python -m src.test.test_aituber
 import asyncio
+from unittest.mock import patch
 
 import pytest
 
 from src.ai_tuber import AItuber, TalkFormat, TalkInput
 
 
-def aituber_response_callback(response: str) -> None:
+def print_response_callback(response: str) -> None:
     message = TalkFormat.model_validate_json(response)
     print(f"AI callback: {message.reply}")
     print(f"AI callback: {message.emotion}")
@@ -14,7 +15,7 @@ def aituber_response_callback(response: str) -> None:
 
 
 async def console_app() -> None:
-    aituber = AItuber(response_callback=aituber_response_callback)
+    aituber = AItuber(response_callback=print_response_callback)
     while True:
         user_input = input("ユーザー: ")
         if user_input.strip().lower() in ["exit", "quit"]:
@@ -30,8 +31,13 @@ async def console_app() -> None:
         print(f"AI: {response_content.action}")
 
 
-def test_console_app() -> None:
+def run_console_app() -> None:
     asyncio.run(console_app())
+
+
+def test_console_app() -> None:
+    with patch("builtins.input", side_effect=["こんにちは", "exit"]):
+        asyncio.run(console_app())
 
 
 if __name__ == "__main__":
