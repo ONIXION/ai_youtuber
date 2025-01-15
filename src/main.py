@@ -33,6 +33,7 @@ UnityApp_EXECUTABLE = r"C:\Users\kousei\AppDev\AItuber\Builds\AItuber.exe"
 
 class YoutubeLive:
     def __init__(self) -> None:
+        """必要なプロセスを起動し、AItuberを開始する"""
         # WebSocketサーバーを開始
         self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT)
         self.unity_server.start()
@@ -61,11 +62,21 @@ class YoutubeLive:
         logger.info("AItuberを開始しました")
 
     def __del__(self) -> None:
+        """デコンストラクタ"""
         self.close()
 
     def create_send_unity_callback(
         self, server: WebSocketServer
     ) -> Callable[[str], None]:
+        """Unityにメッセージを送信するためのコールバック関数を生成する
+
+        Args:
+            server (WebSocketServer): WebSocketサーバー
+
+        Returns:
+            Callable[[str], None]: AIからのメッセージを受け取り、Unityに送信するコールバック関数
+        """
+
         def send_unity_callback(response: str) -> None:
             message = TalkFormat.model_validate_json(response)
             server.send_message_to_all(
@@ -75,6 +86,11 @@ class YoutubeLive:
         return send_unity_callback
 
     def get_youtube_url(self) -> str:
+        """YouTube Live配信のURLを取得する
+
+        Returns:
+            str: YouTube Live配信のURL
+        """
         root = tk.Tk()
         root.withdraw()  # Hide the main window
         url = simpledialog.askstring(
@@ -84,6 +100,7 @@ class YoutubeLive:
         return url
 
     async def reply_comment(self) -> None:
+        """コメントに返信する、コメントがない場合は何もしない"""
         comment = self.youtube.get_random_comment()
         if comment is None:
             return
@@ -96,6 +113,7 @@ class YoutubeLive:
             await self.aituber.graph.ainvoke({"messages": [agent_input]})
 
     async def start_monitoring(self) -> None:
+        """モニタリングを開始する"""
         logger.info("モニタリングを開始します")
 
         # 設定が完了するまで待機
@@ -118,6 +136,7 @@ class YoutubeLive:
             await asyncio.sleep(0.5)
 
     def close(self) -> None:
+        """終了処理"""
         logger.info("YoutubeLiveを終了します")
         self.unity_server.stop()
         self.youtube.stop_monitoring()
@@ -127,11 +146,14 @@ class YoutubeLive:
 
 
 if __name__ == "__main__":
+    # 初期化
     youtube_live = YoutubeLive()
     try:
-
+        # モニタリングを開始
         asyncio.run(youtube_live.start_monitoring())
     except KeyboardInterrupt:
+        # Ctrl+Cが押された場合に終了処理を実行
         logger.info("終了コマンドを受信しました")
     finally:
+        # デコンストラクタを呼び出すことで終了処理を実行
         del youtube_live
