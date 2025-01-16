@@ -34,6 +34,7 @@ dependencies = [
     { name = "aiohttp" },
     { name = "browser-use" },
     { name = "google-auth-oauthlib" },
+    { name = "hdbscan" },
     { name = "japanize-matplotlib" },
     { name = "langchain-chroma" },
     { name = "langchain-google-genai" },
@@ -41,9 +42,11 @@ dependencies = [
     { name = "langchain-openai" },
     { name = "langgraph" },
     { name = "matplotlib" },
+    { name = "pyclustering" },
     { name = "pytest" },
     { name = "python-dotenv" },
     { name = "pywin32" },
+    { name = "scikit-learn" },
     { name = "sentencepiece" },
     { name = "umap-learn" },
     { name = "websockets" },
@@ -56,6 +59,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.11.11" },
     { name = "browser-use", specifier = ">=0.1.19" },
     { name = "google-auth-oauthlib", specifier = ">=1.2.1" },
+    { name = "hdbscan", specifier = ">=0.8.40" },
     { name = "japanize-matplotlib", specifier = ">=1.1.3" },
     { name = "langchain-chroma", specifier = ">=0.2.0" },
     { name = "langchain-google-genai", specifier = ">=2.0.8" },
@@ -63,9 +67,11 @@ requires-dist = [
     { name = "langchain-openai", specifier = ">=0.3.0" },
     { name = "langgraph", specifier = ">=0.2.62" },
     { name = "matplotlib", specifier = ">=3.10.0" },
+    { name = "pyclustering", specifier = ">=0.10.1.2" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "pywin32", specifier = ">=308" },
+    { name = "scikit-learn", specifier = ">=1.6.1" },
     { name = "sentencepiece", specifier = ">=0.2.0" },
     { name = "umap-learn", specifier = ">=0.5.7" },
     { name = "websockets", specifier = ">=14.1" },
@@ -916,6 +922,22 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f5/38/3af3d3633a34a3316095b39c8e8fb4853a28a536e55d347bd8d8e9a14b03/h11-0.14.0.tar.gz", hash = "sha256:8f19fbbe99e72420ff35c00b27a34cb9937e902a8b810e2c88300c6f0a3b699d", size = 100418 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/95/04/ff642e65ad6b90db43e668d70ffb6736436c7ce41fcc549f4e9472234127/h11-0.14.0-py3-none-any.whl", hash = "sha256:e3fe4ac4b851c468cc8363d500db52c2ead036020723024a109d37346efaa761", size = 58259 },
+]
+
+[[package]]
+name = "hdbscan"
+version = "0.8.40"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "joblib" },
+    { name = "numpy" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c1/84/6b010387b795f774e1ec695df3c8660c15abd041783647d5e7e4076bfc6b/hdbscan-0.8.40.tar.gz", hash = "sha256:c9e383ff17beee0591075ff65d524bda5b5a35dfb01d218245a7ba30c8d48a17", size = 6904096 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/33/ff/4739886abb990dc6feb7b02eafb38a7eaf090fffef6336e70a03d693f433/hdbscan-0.8.40-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:353eaa22e42bee69df095744dbb8b29360e516bd9dcb84580dceeeb755f004cc", size = 1497291 },
+    { url = "https://files.pythonhosted.org/packages/c0/cb/6b4254f8a33e075118512e55acf3485c155ea52c6c35d69a985bdc59297c/hdbscan-0.8.40-cp312-cp312-win_amd64.whl", hash = "sha256:1b55a935ed7b329adac52072e1c4028979dfc54312ca08de2deece9c97d6ebb1", size = 726198 },
 ]
 
 [[package]]
@@ -2382,6 +2404,18 @@ sdist = { url = "https://files.pythonhosted.org/packages/1d/67/6afbf0d507f73c32d
 wheels = [
     { url = "https://files.pythonhosted.org/packages/77/89/bc88a6711935ba795a679ea6ebee07e128050d6382eaa35a0a47c8032bdc/pyasn1_modules-0.4.1-py3-none-any.whl", hash = "sha256:49bfa96b45a292b711e986f222502c1c9a5e1f4e568fc30e2574a6c7d07838fd", size = 181537 },
 ]
+
+[[package]]
+name = "pyclustering"
+version = "0.10.1.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "pillow" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4b/cf/6c1183d0c1e76df398d0808f78cabaedd87a1ca7548b9b03d51620ff55eb/pyclustering-0.10.1.2.tar.gz", hash = "sha256:8a98fd299fcc1e21b7b7c963275162dd7194aa3d921aa66d313775597cf833d1", size = 2575620 }
 
 [[package]]
 name = "pydantic"

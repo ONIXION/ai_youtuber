@@ -1,15 +1,20 @@
 import logging
+import warnings
 from logging import Formatter, StreamHandler, getLogger
 from typing import Any, List
 
-import chromadb
+import hdbscan
 import japanize_matplotlib
 import matplotlib.pyplot as plt
+import numpy
 import numpy as np
 import torch
 import umap
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableSequence
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
+from pyclustering.cluster.center_initializer import kmeans_plusplus_initializer
+from pyclustering.cluster.gmeans import gmeans
+from pyclustering.cluster.xmeans import xmeans
 
 # ログの設定
 logger = getLogger(__name__)
@@ -19,6 +24,9 @@ stream_handler = StreamHandler()
 stream_handler.setLevel(logging.DEBUG)
 stream_handler.setFormatter(handler_format)
 logger.addHandler(stream_handler)
+
+japanize_matplotlib.japanize()  # flake8のエラーを出さないよう明示的に記述
+numpy.warnings = warnings  # type: ignore # pyclusteringのエラーを回避するための設定
 
 
 # 過去の埋め込みを保持するための簡易クラス
@@ -88,25 +96,64 @@ class UmapReducer(Runnable[List[List[float]], np.ndarray]):
     ) -> np.ndarray:
         array_data = np.array(embeddings)
         result = self.reducer.fit_transform(array_data)
+        # [0,1]に正規化
+        result = (result - result.min()) / (result.max() - result.min())
 
         assert isinstance(result, np.ndarray)
         return result
 
 
 def plot_embeddings(
-    embeddings_2d: np.ndarray, texts: List[str], ax: Any, scatter: Any
+    embeddings_2d: np.ndarray,
+    texts: List[str],
+    ax: Any,
+    scatter: Any,
+    cluster_labels: List[int],
 ) -> Any:
     if embeddings_2d.size == 0:
         logger.warning("プロットするデータがありません。")
-        return
+        return scatter
     ax.clear()
-    scatter = ax.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], c="blue")
+    scatter = ax.scatter(
+        embeddings_2d[:, 0], embeddings_2d[:, 1], c=cluster_labels, cmap='viridis'
+    )
     for i, txt in enumerate(texts):
         ax.annotate(txt, (embeddings_2d[i, 0], embeddings_2d[i, 1]))
-    ax.set_title("UMAP projection")
+    ax.set_title("UMAP projection with Clustering")
     plt.draw()
     plt.pause(0.001)  # 描画をリフレッシュ
     return scatter
+
+
+def clusterring(embeddings: Any, cluster_num: int) -> List[List[int]]:
+    # initial_centers = kmeans_plusplus_initializer(embeddings, cluster_num).initialize()
+    # xmeans_instance = xmeans(embeddings, initial_centers, kmax=10)
+    # xmeans_instance.process()
+    # clusters = xmeans_instance.get_clusters()
+
+    # logger.info(f"クラスタリング結果: {clusters}")
+    # assert isinstance(clusters, List)
+    # return clusters
+    clusterer = hdbscan.HDBSCAN(gen_min_span_tree=True, min_cluster_size=2)
+    clusterer.fit(embeddings)
+
+    # クラスタリングラベル[0, 1, 2, ...]をindexのリストに変換
+    cluster_labels = clusterer.labels_
+    cluster_num = len(set(cluster_labels))
+    clusters = [[] for _ in range(cluster_num)]
+    for index, label in enumerate(cluster_labels):
+        clusters[label].append(index)
+
+    logger.info(f"クラスタリング結果: {clusters}")
+    return clusters
+
+
+def get_cluster_labels(clusters: Any, data_len: int) -> List[int]:
+    cluster_labels = [0] * data_len
+    for cluster_id, cluster in enumerate(clusters):
+        for index in cluster:
+            cluster_labels[index] = cluster_id
+    return cluster_labels
 
 
 if __name__ == "__main__":
@@ -124,6 +171,17 @@ if __name__ == "__main__":
         "あなたのことを教えて",
         "あなたは誰ですか",
         "あなたは何者ですか",
+        "あなたはどこに住んでいますか",
+        "あなたは何をしていますか",
+        "あなたは何を食べますか",
+        "あなたは何を飲みますか",
+        "あなたは何を考えていますか",
+        "あなたは何を知っていますか",
+        "あなたは何を見ていますか",
+        "あなたは何を聞いていますか",
+        "あなたは何を話していますか",
+        "あなたは何を感じていますか",
+        "あなたは何を思っていますか",
     ]
     sample_embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-m3").embed_documents(
         sample_data
@@ -146,7 +204,9 @@ if __name__ == "__main__":
     all_embeddings = memory.get_embeddings()
     all_texts = memory.get_texts()
     embeddings_2d = reduce_runnable.invoke(all_embeddings)
-    scatter = plot_embeddings(embeddings_2d, all_texts, ax, scatter)
+    clusters = clusterring(embeddings_2d, cluster_num=3)
+    cluster_labels = get_cluster_labels(clusters, len(all_embeddings))
+    scatter = plot_embeddings(embeddings_2d, all_texts, ax, scatter, cluster_labels)
 
     while True:
         text = input("文字列を入力してください ('exit' で終了): ")
@@ -157,7 +217,14 @@ if __name__ == "__main__":
         result = chain.invoke([text])
         memory.add_texts([text])
         print("次元削減結果:", result)
-        scatter = plot_embeddings(result, memory.get_texts(), ax, scatter)
+
+        amount_centers = len(clusters)
+        clusters = clusterring(result, amount_centers)
+        cluster_labels = get_cluster_labels(clusters, len(result))
+
+        scatter = plot_embeddings(
+            result, memory.get_texts(), ax, scatter, cluster_labels
+        )
 
     # インタラクティブモードのオフ
     plt.ioff()
