@@ -18,7 +18,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, MessagesState, StateGraph
 from pydantic import BaseModel, Field
 
-from src.prompt_define import assist_prompt_txt, talk_prompt_txt
+from src.prompt_define import assist_prompt_txt
 
 load_dotenv()
 
@@ -107,7 +107,9 @@ async def web_search(input: Annotated[str, "what to search for"]) -> Any:
 
 
 class AiAgent:
-    def __init__(self, response_callback: TalkFormat | None = None) -> None:
+    def __init__(
+        self, system_prompt: str, response_callback: TalkFormat | None = None
+    ) -> None:
         # パラメータ設定
         gemini_flash = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash-exp", temperature=0.7
@@ -138,7 +140,7 @@ class AiAgent:
         # TalkModelの設定
         talk_prompt = ChatPromptTemplate.from_messages(
             [
-                SystemMessage(content=talk_prompt_txt),
+                SystemMessage(content=system_prompt),
                 MessagesPlaceholder(variable_name="history"),
                 MessagesPlaceholder(variable_name="message"),
             ]

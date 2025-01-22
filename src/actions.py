@@ -3,6 +3,7 @@ import logging
 import random
 from abc import ABC, abstractmethod
 from logging import Formatter, StreamHandler, getLogger
+from typing import Callable
 
 import py_trees
 import py_trees.behaviours
@@ -96,4 +97,43 @@ class SingleAgentAction(BaseAgentAction):
     def generate_prompt(self) -> str:
         # ユーザーからの入力を受け取る
         prompt = input("ユーザーからの入力を入力してください: ")
+        return prompt
+
+
+class PickAgendaAction(BaseAgentAction):
+    def __init__(
+        self,
+        name: str,
+        agent_dict: dict[str, AiAgent],
+        fetch_comment_callback: Callable,
+    ) -> None:
+        super().__init__(name, agent_dict)
+        self.loader = fetch_comment_callback
+
+    def generate_prompt(self) -> str:
+        comment = self.loader()
+        assert isinstance(comment, str)
+        prompt_prefix = (
+            "視聴者から以下の会話のアジェンダが送られてきました。これを読み上げた上で、アジェンダに対してあなたの意見を述べ、もう一方の出演者に対しても意見を促して下さい:\n",
+            "アジェンダ：",
+        )
+        prompt = "\n".join(prompt_prefix) + comment
+        return prompt
+
+
+class ConversationAction(BaseAgentAction):
+    def generate_prompt(self) -> str:
+        # last_speakerが空でないことを確認
+        assert self.blackboard.last_speaker != "", "last_speaker is empty"
+
+        # 前回の話者の発言を取得
+        last_speaker = self.blackboard.last_speaker
+        last_speaker_response = getattr(self.blackboard, f"{last_speaker}_response")
+        assert isinstance(last_speaker_response, str)
+        assert last_speaker_response != "", f"{last_speaker}_response is empty"
+
+        prompt_prefix = (
+            "あなたの相方から以下の発言がありました。これに対してあなたの意見を述べてください:\n",
+        )
+        prompt = "\n".join(prompt_prefix) + last_speaker_response
         return prompt
