@@ -115,12 +115,12 @@ def create_janken_tree():
 # ツリーの実行
 def main():
     # 行動ツリーの作成
-    py_trees.blackboard.Blackboard.enable_activity_stream(maximum_size=100)
+    # py_trees.blackboard.Blackboard.enable_activity_stream(maximum_size=100)
     blackboard = py_trees.blackboard.Client(name="JankenBlackboard")
-    blackboard.register_key(key="player_choice", access=py_trees.common.Access.WRITE)
-    blackboard.player_choice = ""
-    blackboard.register_key(key="computer_choice", access=py_trees.common.Access.WRITE)
-    blackboard.computer_choice = ""
+    # blackboard.register_key(key="player_choice", access=py_trees.common.Access.WRITE)
+    # blackboard.player_choice = ""
+    # blackboard.register_key(key="computer_choice", access=py_trees.common.Access.WRITE)
+    # blackboard.computer_choice = ""
     blackboard.register_key(
         key="play_again_status", access=py_trees.common.Access.WRITE
     )
@@ -131,7 +131,7 @@ def main():
     tree.setup(timeout=15)
 
     while True:
-        status = tree.tick()
+        tree.tick()
         # PlayAgain ノードの結果によってループを継続するか決定
         play_again_status = blackboard.play_again_status
         if play_again_status == py_trees.common.Status.FAILURE:
