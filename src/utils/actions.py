@@ -89,7 +89,7 @@ class BaseAgentAction(py_trees.behaviour.Behaviour, ABC):
         return py_trees.common.Status.SUCCESS
 
     @abstractmethod
-    def generate_prompt(self) -> str:
+    def generate_prompt(self) -> str | list[str]:
         pass
 
 
@@ -134,6 +134,103 @@ class ConversationAction(BaseAgentAction):
 
         prompt_prefix = (
             "あなたの相方から以下の発言がありました。これに対してあなたの意見を述べてください:\n",
+            "相方の発言：",
+        )
+        prompt = "\n".join(prompt_prefix) + last_speaker_response
+        return prompt
+
+
+# TODO: エラーメッセージが正しく表示されるように修正
+class PrepareDebateAction(BaseAgentAction):
+    def __init__(
+        self,
+        name: str,
+        agent_dict: dict[str, AiAgent],
+        create_agenda_callback: Callable,
+    ) -> None:
+        super().__init__(name, agent_dict)
+        self.loader = create_agenda_callback
+
+    def generate_prompt(self) -> list[str]:
+        agenda = self.loader()
+        assert isinstance(agenda, list), "agendaはlist型である必要があります"
+        assert len(agenda) == 2, "agendaの長さは2である必要があります"
+        assert all(
+            [isinstance(item, str) for item in agenda]
+        ), "agendaはstr型のリストである必要があります"
+
+        prompt_prefix = (
+            "これから相方とディベートを行ってもらいます。あなたは以下の主張を正当化し、相方を論破してください。",
+            "最初にシンキングタイムが与えられますので、主張を論証する根拠を慎重に考えて、整理してください:\n",
+            "主張：",
+        )
+        prompt1 = "\n".join(prompt_prefix) + agenda[0]
+        prompt2 = "\n".join(prompt_prefix) + agenda[1]
+        return [prompt1, prompt2]
+
+    def update(self) -> py_trees.common.Status:
+        try:
+            prompt1, prompt2 = self.generate_prompt()
+            agent1, agent2 = self.agent_dict.values()
+            agent1_key, agent2_key = self.agent_dict.keys()
+
+            logger.debug(f"AgentAction: {agent1_key} に対しての入力: {prompt1}")
+            agent1_input = TalkInput(name="host", input=prompt1).model_dump_json()
+            logger.debug(f"AgentAction: {agent2_key} に対しての入力: {prompt2}")
+            agent2_input = TalkInput(name="host", input=prompt2).model_dump_json()
+
+            responses = asyncio.get_event_loop().run_until_complete(
+                asyncio.gather(
+                    agent1.graph.ainvoke({"messages": [agent1_input]}),
+                    agent2.graph.ainvoke({"messages": [agent2_input]}),
+                )
+            )
+            response1, response2 = responses
+
+            # 全ての応答を得るまで待機
+            message1 = TalkFormat.model_validate_json(
+                response1["messages"][-1].content
+            ).reply
+            message2 = TalkFormat.model_validate_json(
+                response2["messages"][-1].content
+            ).reply
+
+            setattr(self.blackboard, f"{agent1_key}_response", message1)
+            setattr(self.blackboard, f"{agent2_key}_response", message2)
+        except Exception as e:
+            raise e
+
+        logger.debug(f"AgentAction: {agent1_key} の応答: {message1}")
+        logger.debug(f"AgentAction: {agent2_key} の応答: {message2}")
+        assert response1 is not None
+        assert response2 is not None
+
+
+class StartDebateAction(BaseAgentAction):
+    def generate_prompt(self) -> str:
+        prompt = "シンキングタイムが終了しました。ディベートを開始します。最初に、あなたの論証を相方に対して述べてください。"
+
+        return prompt
+
+    def allocate_agent(self) -> str:
+        logger.debug("StartDebateAction: ランダムにエージェントを選択します")
+        return random.choice(list(self.agent_dict.keys()))
+
+
+class DebateAction(BaseAgentAction):
+    def generate_prompt(self) -> str:
+        # last_speakerが空でないことを確認
+        assert self.blackboard.last_speaker != "", "last_speaker is empty"
+
+        # 前回の話者の発言を取得
+        last_speaker = self.blackboard.last_speaker
+        last_speaker_response = getattr(self.blackboard, f"{last_speaker}_response")
+        assert isinstance(last_speaker_response, str)
+        assert last_speaker_response != "", f"{last_speaker}_response is empty"
+
+        prompt_prefix = (
+            "あなたの相方は以下のように発言しました。これに対してシンキングタイムで考えた内容をもとに、反論してください:\n",
+            "相方の発言：",
         )
         prompt = "\n".join(prompt_prefix) + last_speaker_response
         return prompt

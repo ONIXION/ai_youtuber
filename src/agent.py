@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from logging import Formatter, StreamHandler, getLogger
 from typing import Annotated, Any, Literal
@@ -78,16 +79,27 @@ async def think(input: Annotated[str, "what to think about"]) -> Any:
         [
             SystemMessage(
                 content="""
-Think deeply about the input and generate an appropriate response.
-"""
+    Think deeply about the input and generate an appropriate response.
+    """
             ),
             MessagesPlaceholder(variable_name="messages"),
         ]
     )
     think_model = think_prompt | gemini_think
     message = [HumanMessage(content="Input: " + input)]
-    response = await think_model.ainvoke({"messages": message})
-    return response.content
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = await think_model.ainvoke({"messages": message})
+            return response.content
+        except Exception as e:
+            logger.error(f"Error in think: {e}")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(2**attempt)
+                continue
+            else:
+                raise e
 
 
 # WebSearchModelをtoolとして定義
@@ -231,7 +243,21 @@ class AiAgent:
             )
         ]
         input_message = {"message": message, "history": history}
-        response = self.talk_model.invoke(input_message)
+
+        max_retries = 3
+        response = None
+        for attempt in range(max_retries):
+            try:
+                response = self.talk_model.invoke(input_message)
+                break
+            except Exception as e:
+                logger.error(f"Error in talk: {e}")
+                if attempt < max_retries - 1:
+                    continue
+                else:
+                    raise e
+
+        assert response is not None
         self._add_history(HumanMessage(content=f"{input.name}: {input.input}"))
         self._add_history(AIMessage(content=f"雲霧星奈: {response.reply}"))
         logger.info(f"雲霧星奈: {response.reply}")
