@@ -116,12 +116,25 @@ class UmapReducer(Runnable[List[List[float]], np.ndarray]):
 
 
 class EmbeddinEngine:
-    def __init__(self, init_data: list[str]) -> None:
+    def __init__(self, init_data: list[str] | None = None) -> None:
+        if init_data is None:
+            init_data = [
+                "テストデータ1",
+                "テストデータ2",
+                "テストデータ3",
+                "テストデータ4",
+            ]
         # インタラクティブモードの有効化
         plt.ion()
         _, self.ax = plt.subplots(figsize=(10, 8))
-        self.scatter = None  # 初期化
+        self.scatter = None
+        self.chain: RunnableSequence | None = None
+        self.embedding_memory: EmbeddingMemory | None = None
+        self.reduced_embedding_memory: ReducedEmbeddingMemory | None = None
 
+        self.init_memory(init_data)
+
+    def init_memory(self, init_data: list[str]) -> None:
         # メモリを初期化
         self.embedding_memory = EmbeddingMemory()
         self.reduced_embedding_memory = ReducedEmbeddingMemory()
@@ -157,6 +170,10 @@ class EmbeddinEngine:
         )
 
     def update(self, text: str) -> None:
+        assert self.chain is not None
+        assert self.embedding_memory is not None
+        assert self.reduced_embedding_memory is not None
+
         result = self.chain.invoke([text])
         self.embedding_memory.add_texts([text])
         self.reduced_embedding_memory.add_texts([text])
@@ -178,6 +195,20 @@ class EmbeddinEngine:
         # インタラクティブモードのオフ
         plt.ioff()
         plt.show()
+
+    def clear(self) -> None:
+        self.embedding_memory = EmbeddingMemory()
+        self.reduced_embedding_memory = ReducedEmbeddingMemory()
+        merge_runnable = MergeEmbeddingsRunnable(memory=self.embedding_memory)
+
+        embedding_model_name = "BAAI/bge-m3"
+        embedding_runnable = EmbeddingRunnable(model_name=embedding_model_name)
+        reduce_runnable = UmapReducer()
+
+        self.chain = RunnableSequence(
+            first=embedding_runnable, middle=[merge_runnable], last=reduce_runnable
+        )
+        self.scatter = None
 
     def _plot_embeddings(
         self,
