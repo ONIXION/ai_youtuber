@@ -16,8 +16,8 @@ AItuber/Assets/Fonts/NotoSansJP-Medium SDF.asset
 Build/
 
 # Other
-chroma-db-memory/
-chroma-db-setting/
+chroma-db-memory*/
+chroma-db-setting*/
 client_secrets.json
 .vscode
 AItuber/Assets/Fonts/NotoSansJP-Medium SDF.asset

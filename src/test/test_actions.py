@@ -44,7 +44,9 @@ def print_response_callback(response: str) -> None:
 #     blackboard.register_key(key="agent1_response", access=py_trees.common.Access.WRITE)
 #     blackboard.agent1_response = ""
 #     agent = AiAgent(
-#         system_prompt=agent2_talk_prompt_txt, response_callback=print_response_callback
+#         "雲霧月音",
+#         system_prompt=agent2_talk_prompt_txt,
+#         response_callback=print_response_callback,
 #     )
 #     agent_dict = {"agent1": agent}
 #     action = SingleAgentAction("test_action", agent_dict)
@@ -70,10 +72,14 @@ def print_response_callback(response: str) -> None:
 #     blackboard.agent1_response = ""
 
 #     agent1 = AiAgent(
-#         system_prompt=agent1_talk_prompt_txt, response_callback=print_response_callback
+#         "雲霧星奈",
+#         system_prompt=agent1_talk_prompt_txt,
+#         response_callback=print_response_callback,
 #     )
 #     agent2 = AiAgent(
-#         system_prompt=agent2_talk_prompt_txt, response_callback=print_response_callback
+#         "雲霧月音",
+#         system_prompt=agent2_talk_prompt_txt,
+#         response_callback=print_response_callback,
 #     )
 #     agent_dict = {"agent1": agent1, "agent2": agent2}
 #     root = py_trees.composites.Sequence("root", memory=False)
@@ -112,10 +118,14 @@ def test_prepare_debate() -> None:
     blackboard.agent2_response = ""
 
     agent1 = AiAgent(
-        system_prompt=agent1_talk_prompt_txt, response_callback=print_response_callback
+        "雲霧星奈",
+        system_prompt=agent1_talk_prompt_txt,
+        response_callback=print_response_callback,
     )
     agent2 = AiAgent(
-        system_prompt=agent2_talk_prompt_txt, response_callback=print_response_callback
+        "星霧月音",
+        system_prompt=agent2_talk_prompt_txt,
+        response_callback=print_response_callback,
     )
     agent_dict = {"agent1": agent1, "agent2": agent2}
 

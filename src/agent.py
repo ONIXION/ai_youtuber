@@ -120,8 +120,9 @@ async def web_search(input: Annotated[str, "what to search for"]) -> Any:
 
 class AiAgent:
     def __init__(
-        self, system_prompt: str, response_callback: TalkFormat | None = None
+        self, name: str, system_prompt: str, response_callback: TalkFormat | None = None
     ) -> None:
+        self.name = name
         # パラメータ設定
         gemini_flash = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash-exp", temperature=0.7
@@ -132,10 +133,10 @@ class AiAgent:
         self.session_id = "ai-tuber"
         # vector_retrieverの設定
         self.setting_vr = self._create_vector_retriever(
-            top_k=1, path="./chroma-db-setting"
+            top_k=1, path=f"./chroma-db-setting{self.name}"
         )
         self.memory_vr = self._create_vector_retriever(
-            top_k=3, path="./chroma-db-memory"
+            top_k=3, path=f"./chroma-db-memory{self.name}"
         )
 
         # コールバック関数
@@ -259,9 +260,9 @@ class AiAgent:
 
         assert response is not None
         self._add_history(HumanMessage(content=f"{input.name}: {input.input}"))
-        self._add_history(AIMessage(content=f"雲霧星奈: {response.reply}"))
-        logger.info(f"雲霧星奈: {response.reply}")
-        save_data = f"{input.name}: {input.input} 雲霧星奈: {response.reply}\n"
+        self._add_history(AIMessage(content=f"{self.name}: {response.reply}"))
+        logger.info(f"{self.name}: {response.reply}")
+        save_data = f"{input.name}: {input.input} {self.name}: {response.reply}\n"
         self._add_data_to_vr(self.memory_vr, [save_data])
         with open("./text_data/memory.txt", "a", encoding="utf-8") as f:
             f.write(save_data)
