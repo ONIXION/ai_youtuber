@@ -9,9 +9,11 @@ from src.agent import AiAgent, TalkFormat
 from src.prompt_define import agent1_talk_prompt_txt, agent2_talk_prompt_txt
 from src.utils.actions import (
     ConversationAction,
+    DebateAction,
     PickAgendaAction,
     PrepareDebateAction,
     SingleAgentAction,
+    StartDebateAction,
 )
 
 if __name__ == "__main__":
@@ -106,7 +108,47 @@ def print_response_callback(response: str) -> None:
 #     assert blackboard.agent1_response != "" and blackboard.agent1_response != ""
 
 
-def test_prepare_debate() -> None:
+# def test_prepare_debate() -> None:
+#     logger.info("test_prepare_debate start")
+#     logger.info("==========init==========")
+#     blackboard = py_trees.blackboard.Client(name="AgentDialog")
+#     blackboard.register_key(key="last_speaker", access=py_trees.common.Access.WRITE)
+#     blackboard.last_speaker = ""
+#     blackboard.register_key(key="agent1_response", access=py_trees.common.Access.WRITE)
+#     blackboard.agent1_response = ""
+#     blackboard.register_key(key="agent2_response", access=py_trees.common.Access.WRITE)
+#     blackboard.agent2_response = ""
+
+#     agent1 = AiAgent(
+#         "雲霧星奈",
+#         system_prompt=agent1_talk_prompt_txt,
+#         response_callback=print_response_callback,
+#     )
+#     agent2 = AiAgent(
+#         "星霧月音",
+#         system_prompt=agent2_talk_prompt_txt,
+#         response_callback=print_response_callback,
+#     )
+#     agent_dict = {"agent1": agent1, "agent2": agent2}
+
+#     def callback() -> list[str]:
+#         return ["りんごは蜜柑より甘い", "蜜柑はりんごより甘い"]
+
+#     action = PrepareDebateAction("PickAgendaAction", agent_dict, callback)
+
+#     logger.info("==========call action==========")
+#     action.initialise()
+#     action.update()
+
+#     logger.info("==========assert==========")
+#     response1 = blackboard.agent1_response
+#     response2 = blackboard.agent2_response
+#     logger.info(f"agent1_response: {response1}")
+#     logger.info(f"agent2_response: {response2}")
+#     assert response1 != "" and response2 != ""
+
+
+def test_debate() -> None:
     logger.info("test_prepare_debate start")
     logger.info("==========init==========")
     blackboard = py_trees.blackboard.Client(name="AgentDialog")
@@ -132,11 +174,19 @@ def test_prepare_debate() -> None:
     def callback() -> list[str]:
         return ["りんごは蜜柑より甘い", "蜜柑はりんごより甘い"]
 
-    action = PrepareDebateAction("PickAgendaAction", agent_dict, callback)
+    root = py_trees.composites.Sequence("root", memory=False)
+    root.add_children(
+        [
+            PrepareDebateAction("PrepareDebateAction", agent_dict, callback),
+            StartDebateAction("StartDebateAction", agent_dict),
+            DebateAction("DebateAction1", agent_dict),
+            DebateAction("DebateAction2", agent_dict),
+            DebateAction("DebateAction3", agent_dict),
+        ]
+    )
 
     logger.info("==========call action==========")
-    action.initialise()
-    action.update()
+    root.tick_once()
 
     logger.info("==========assert==========")
     response1 = blackboard.agent1_response

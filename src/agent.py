@@ -71,26 +71,26 @@ class TalkFormat(BaseModel):
 @tool
 async def think(input: Annotated[str, "what to think about"]) -> Any:
     """Think about the input."""
-    gemini_think = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash-thinking-exp-1219", temperature=0.7
-    )
-    # ThinkModelの設定
-    think_prompt = ChatPromptTemplate.from_messages(
-        [
-            SystemMessage(
-                content="""
-    Think deeply about the input and generate an appropriate response.
-    """
-            ),
-            MessagesPlaceholder(variable_name="messages"),
-        ]
-    )
-    think_model = think_prompt | gemini_think
-    message = [HumanMessage(content="Input: " + input)]
-
     max_retries = 3
     for attempt in range(max_retries):
         try:
+            gemini_think = ChatGoogleGenerativeAI(
+                model="gemini-2.0-flash-thinking-exp-1219", temperature=0.7
+            )
+            # ThinkModelの設定
+            think_prompt = ChatPromptTemplate.from_messages(
+                [
+                    SystemMessage(
+                        content="""
+            Think deeply about the input and generate an appropriate response.
+            """
+                    ),
+                    MessagesPlaceholder(variable_name="messages"),
+                ]
+            )
+            think_model = think_prompt | gemini_think
+            message = [HumanMessage(content="Input: " + input)]
+
             response = await think_model.ainvoke({"messages": message})
             return response.content
         except Exception as e:
@@ -226,7 +226,7 @@ class AiAgent:
         return END
         # return "manager"
 
-    def call_talk_model(self, state: MessagesState) -> dict:
+    async def call_talk_model(self, state: MessagesState) -> dict:
         last_msg = state['messages'][-1].content
         input = TalkInput.model_validate_json(last_msg)
         logger.info(f"{input.name}: {input.input}")
@@ -254,6 +254,7 @@ class AiAgent:
             except Exception as e:
                 logger.error(f"Error in talk: {e}")
                 if attempt < max_retries - 1:
+                    await asyncio.sleep(2**attempt)
                     continue
                 else:
                     raise e

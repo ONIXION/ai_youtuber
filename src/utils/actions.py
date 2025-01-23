@@ -205,6 +205,8 @@ class PrepareDebateAction(BaseAgentAction):
         assert response1 is not None
         assert response2 is not None
 
+        return py_trees.common.Status.SUCCESS
+
 
 class StartDebateAction(BaseAgentAction):
     def generate_prompt(self) -> str:
