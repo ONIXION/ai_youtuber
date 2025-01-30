@@ -148,7 +148,7 @@ def print_response_callback(response: str) -> None:
 #     assert response1 != "" and response2 != ""
 
 
-def test_debate() -> None:
+def test_simple_debate() -> None:
     logger.info("test_prepare_debate start")
     logger.info("==========init==========")
     blackboard = py_trees.blackboard.Client(name="AgentDialog")

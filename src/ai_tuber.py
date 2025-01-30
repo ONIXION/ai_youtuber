@@ -18,7 +18,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, MessagesState, StateGraph
 from pydantic import BaseModel, Field
 
-from src.prompt_define import assist_prompt_txt, talk_prompt_txt
+from src.prompt_define import assist_prompt_txt
 
 load_dotenv()
 
