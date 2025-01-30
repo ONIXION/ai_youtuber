@@ -3,7 +3,7 @@ import subprocess
 import time
 
 import requests
-from browser_use import Agent, Browser, BrowserConfig, Controller
+from browser_use import Agent, Browser, BrowserConfig
 from browser_use.browser.context import BrowserContext, BrowserContextConfig
 from langchain_openai import ChatOpenAI
 

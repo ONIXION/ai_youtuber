@@ -1,11 +1,12 @@
 import asyncio
 import logging
 from logging import Formatter, StreamHandler, getLogger
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Callable, Literal
 
 import chromadb
-from browser_use import Agent, Controller
+from browser_use import Agent, Browser, BrowserConfig, Controller
 from browser_use.browser.browser import Browser, BrowserConfig
+from browser_use.browser.context import BrowserContext, BrowserContextConfig
 from dotenv import load_dotenv
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.globals import set_debug, set_verbose
@@ -20,6 +21,7 @@ from langgraph.graph import END, START, MessagesState, StateGraph
 from pydantic import BaseModel, Field
 
 from src.prompt_define import assist_prompt_txt
+from src.utils.browser_util import get_devtools_url, start_chrome
 
 load_dotenv()
 
@@ -118,16 +120,38 @@ async def web_search(input: Annotated[str, "what to search for"]) -> Any:
     return result
 
 
+def web_search_creater(browser_port: int) -> Any:
+    browser = Browser(config=BrowserConfig(cdp_url=get_devtools_url(browser_port)))
+    config = BrowserContextConfig(
+        browser_window_size={'width': 300, 'height': 400},
+    )
+    context = BrowserContext(browser=browser, config=config)
+
+    @tool
+    async def _web_search(input: str) -> Any:
+        agent = Agent(
+            task=input,
+            llm=ChatOpenAI(model='gpt-4o'),
+            browser_context=context,
+        )
+        result = await agent.run()
+        return result
+
+    return _web_search
+
+
 class AiAgent:
     def __init__(
-        self, name: str, system_prompt: str, response_callback: TalkFormat | None = None
+        self,
+        name: str,
+        system_prompt: str,
+        response_callback: TalkFormat | None = None,
+        tool_list: list = [],
     ) -> None:
         self.name = name
         # パラメータ設定
-        gemini_flash = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-exp", temperature=0.7
-        )
-        tool_list = [think, web_search]
+        # レートリミットが厳しかったので，gemini-1.5-flashを使用
+        gemini_flash = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
         self.message_history: BaseMessage = []
         self.mh_limit = 10  # 10なら対話5回分の履歴を保持
         self.session_id = "ai-tuber"

@@ -5,7 +5,7 @@ from logging import Formatter, StreamHandler, getLogger
 import py_trees
 import pytest
 
-from src.agent import AiAgent, TalkFormat
+from src.agent import AiAgent, TalkFormat, think, web_search, web_search_creater
 from src.prompt_define import agent1_talk_prompt_txt, agent2_talk_prompt_txt
 from src.utils.actions import (
     ConversationAction,
@@ -163,11 +163,13 @@ def test_simple_debate() -> None:
         "雲霧星奈",
         system_prompt=agent1_talk_prompt_txt,
         response_callback=print_response_callback,
+        tool_list=[think, web_search],
     )
     agent2 = AiAgent(
         "星霧月音",
         system_prompt=agent2_talk_prompt_txt,
         response_callback=print_response_callback,
+        tool_list=[think, web_search],
     )
     agent_dict = {"agent1": agent1, "agent2": agent2}
 
@@ -197,5 +199,5 @@ def test_simple_debate() -> None:
 
 
 if __name__ == "__main__":
-    # test_prepare_debate()
-    pytest.main(["-v", "-s", "src/test/test_actions.py"])
+    test_simple_debate()
+    # pytest.main(["-v", "-s", "src/test/test_actions.py"])
