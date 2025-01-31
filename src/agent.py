@@ -1,11 +1,10 @@
 import asyncio
 import logging
 from logging import Formatter, StreamHandler, getLogger
-from typing import Annotated, Any, Callable, Literal
+from typing import Annotated, Any, Literal
 
 import chromadb
 from browser_use import Agent, Browser, BrowserConfig, Controller
-from browser_use.browser.browser import Browser, BrowserConfig
 from browser_use.browser.context import BrowserContext, BrowserContextConfig
 from dotenv import load_dotenv
 from langchain.agents import AgentExecutor, create_tool_calling_agent
@@ -21,7 +20,7 @@ from langgraph.graph import END, START, MessagesState, StateGraph
 from pydantic import BaseModel, Field
 
 from src.prompt_define import assist_prompt_txt
-from src.utils.browser_util import get_devtools_url, start_chrome
+from src.utils.browser_util import get_devtools_url
 
 load_dotenv()
 
@@ -129,6 +128,7 @@ def web_search_creater(browser_port: int) -> Any:
 
     @tool
     async def _web_search(input: str) -> Any:
+        """Search the web for the input."""
         agent = Agent(
             task=input,
             llm=ChatOpenAI(model='gpt-4o'),

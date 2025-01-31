@@ -15,6 +15,7 @@ from src.utils.actions import (
     SingleAgentAction,
     StartDebateAction,
 )
+from src.utils.browser_util import start_chrome
 
 if __name__ == "__main__":
     logger = getLogger(__name__)
@@ -119,15 +120,23 @@ def print_response_callback(response: str) -> None:
 #     blackboard.register_key(key="agent2_response", access=py_trees.common.Access.WRITE)
 #     blackboard.agent2_response = ""
 
+#     portA = 9222
+#     portB = 9223
+
+#     procA = start_chrome(portA, "C:/temp/chrome_profile_A")
+#     procB = start_chrome(portB, "C:/temp/chrome_profile_B")
+
 #     agent1 = AiAgent(
 #         "雲霧星奈",
 #         system_prompt=agent1_talk_prompt_txt,
 #         response_callback=print_response_callback,
+#         tool_list=[think, web_search_creater(portA)],
 #     )
 #     agent2 = AiAgent(
 #         "星霧月音",
 #         system_prompt=agent2_talk_prompt_txt,
 #         response_callback=print_response_callback,
+#         tool_list=[think, web_search_creater(portB)],
 #     )
 #     agent_dict = {"agent1": agent1, "agent2": agent2}
 
@@ -139,6 +148,10 @@ def print_response_callback(response: str) -> None:
 #     logger.info("==========call action==========")
 #     action.initialise()
 #     action.update()
+
+#     # サブプロセスを終了
+#     procA.terminate()
+#     procB.terminate()
 
 #     logger.info("==========assert==========")
 #     response1 = blackboard.agent1_response
@@ -199,5 +212,8 @@ def test_simple_debate() -> None:
 
 
 if __name__ == "__main__":
+    # test_single_agent_action()
+    # test_conversation()
+    # test_prepare_debate()
     test_simple_debate()
     # pytest.main(["-v", "-s", "src/test/test_actions.py"])

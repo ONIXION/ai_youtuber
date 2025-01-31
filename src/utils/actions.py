@@ -161,7 +161,8 @@ class PrepareDebateAction(BaseAgentAction):
 
         prompt_prefix = (
             "これから相方とディベートを行ってもらいます。あなたは以下の主張を正当化し、相方を論破してください。",
-            "最初にシンキングタイムが与えられますので、主張を論証する根拠を慎重に考えて、整理してください:\n",
+            "最初にシンキングタイムが与えられますので、あなたの主張を裏付ける根拠を調べて、準備してください。:\n",
+            "WebSearchを使用し、Thinkは使用しないでください\n",
             "主張：",
         )
         prompt1 = "\n".join(prompt_prefix) + agenda[0]
@@ -210,7 +211,10 @@ class PrepareDebateAction(BaseAgentAction):
 
 class StartDebateAction(BaseAgentAction):
     def generate_prompt(self) -> str:
-        prompt = "シンキングタイムが終了しました。ディベートを開始します。最初に、あなたの論証を相方に対して述べてください。"
+        prompt = (
+            "シンキングタイムが終了しました。ディベートを開始します。最初に、あなたの論証を相方に対して述べてください。"
+            "シンキングタイムで有効な情報が得られなかった場合は、自分の考えで論証を構築してください"
+        )
 
         return prompt
 
