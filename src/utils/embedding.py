@@ -83,6 +83,7 @@ class EmbeddingRunnable(Runnable[str, List[float]]):
         super().__init__()
         self.model = HuggingFaceEmbeddings(
             model_name=model_name,
+            cache_folder="models",
             model_kwargs={
                 "model_kwargs": {
                     "torch_dtype": torch.float16,

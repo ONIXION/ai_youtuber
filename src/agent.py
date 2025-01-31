@@ -218,7 +218,8 @@ class AiAgent:
         self, top_k: int = 5, path: str = "./chroma-db"
     ) -> Chroma:
         embeddings = HuggingFaceEmbeddings(
-            model_name="sbintuitions/sarashina-embedding-v1-1b"
+            model_name="sbintuitions/sarashina-embedding-v1-1b",
+            cache_folder="models",
         )
         client = chromadb.PersistentClient(path=path)
         vector_store = Chroma(

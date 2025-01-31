@@ -9,6 +9,7 @@ import py_trees
 import py_trees.behaviours
 
 from src.agent import AiAgent, TalkFormat, TalkInput
+from src.utils.debate import Debate
 
 # ログの設定
 if __name__ == "__main__":
@@ -93,6 +94,51 @@ class BaseAgentAction(py_trees.behaviour.Behaviour, ABC):
         pass
 
 
+class BaseMultiAgentAction(BaseAgentAction, ABC):
+    def update(self) -> py_trees.common.Status:
+        try:
+            prompt1, prompt2 = self.generate_prompt()
+            agent1, agent2 = self.agent_dict.values()
+            agent1_key, agent2_key = self.agent_dict.keys()
+
+            logger.debug(f"AgentAction: {agent1_key} に対しての入力: {prompt1}")
+            agent1_input = TalkInput(name="host", input=prompt1).model_dump_json()
+            logger.debug(f"AgentAction: {agent2_key} に対しての入力: {prompt2}")
+            agent2_input = TalkInput(name="host", input=prompt2).model_dump_json()
+
+            # 全ての応答を得るまで待機
+            responses = asyncio.get_event_loop().run_until_complete(
+                asyncio.gather(
+                    agent1.graph.ainvoke({"messages": [agent1_input]}),
+                    agent2.graph.ainvoke({"messages": [agent2_input]}),
+                )
+            )
+            response1, response2 = responses
+
+            message1 = TalkFormat.model_validate_json(
+                response1["messages"][-1].content
+            ).reply
+            message2 = TalkFormat.model_validate_json(
+                response2["messages"][-1].content
+            ).reply
+
+            setattr(self.blackboard, f"{agent1_key}_response", message1)
+            setattr(self.blackboard, f"{agent2_key}_response", message2)
+        except Exception as e:
+            raise e
+
+        logger.debug(f"AgentAction: {agent1_key} の応答: {message1}")
+        logger.debug(f"AgentAction: {agent2_key} の応答: {message2}")
+        assert response1 is not None
+        assert response2 is not None
+
+        return py_trees.common.Status.SUCCESS
+
+    @abstractmethod
+    def generate_prompt(self) -> list[str]:
+        pass
+
+
 class SingleAgentAction(BaseAgentAction):
     def generate_prompt(self) -> str:
         # ユーザーからの入力を受け取る
@@ -141,23 +187,33 @@ class ConversationAction(BaseAgentAction):
 
 
 # TODO: エラーメッセージが正しく表示されるように修正
-class PrepareDebateAction(BaseAgentAction):
+class PrepareDebateAction(BaseMultiAgentAction):
     def __init__(
         self,
         name: str,
         agent_dict: dict[str, AiAgent],
         create_agenda_callback: Callable,
+        debate: Debate,
     ) -> None:
         super().__init__(name, agent_dict)
         self.loader = create_agenda_callback
+        self.agenda: list[str] = []
+        self.debate = debate
+
+    def start_new_debate(self) -> None:
+        self.agenda = self.loader()
+        assert isinstance(self.agenda, list), "agendaはlist型である必要があります"
+        assert len(self.agenda) == 2, "agendaの長さは2である必要があります"
+        assert all(
+            [isinstance(item, str) for item in self.agenda]
+        ), "agendaはstr型のリストである必要があります"
+
+        self.debate.init_new_debate(
+            names=list(self.agent_dict.keys()), arguments=self.agenda
+        )
 
     def generate_prompt(self) -> list[str]:
-        agenda = self.loader()
-        assert isinstance(agenda, list), "agendaはlist型である必要があります"
-        assert len(agenda) == 2, "agendaの長さは2である必要があります"
-        assert all(
-            [isinstance(item, str) for item in agenda]
-        ), "agendaはstr型のリストである必要があります"
+        self.start_new_debate()
 
         prompt_prefix = (
             "これから相方とディベートを行ってもらいます。あなたは以下の主張を正当化し、相方を論破してください。",
@@ -165,48 +221,9 @@ class PrepareDebateAction(BaseAgentAction):
             "WebSearchを使用し、Thinkは使用しないでください\n",
             "主張：",
         )
-        prompt1 = "\n".join(prompt_prefix) + agenda[0]
-        prompt2 = "\n".join(prompt_prefix) + agenda[1]
+        prompt1 = "\n".join(prompt_prefix) + self.agenda[0]
+        prompt2 = "\n".join(prompt_prefix) + self.agenda[1]
         return [prompt1, prompt2]
-
-    def update(self) -> py_trees.common.Status:
-        try:
-            prompt1, prompt2 = self.generate_prompt()
-            agent1, agent2 = self.agent_dict.values()
-            agent1_key, agent2_key = self.agent_dict.keys()
-
-            logger.debug(f"AgentAction: {agent1_key} に対しての入力: {prompt1}")
-            agent1_input = TalkInput(name="host", input=prompt1).model_dump_json()
-            logger.debug(f"AgentAction: {agent2_key} に対しての入力: {prompt2}")
-            agent2_input = TalkInput(name="host", input=prompt2).model_dump_json()
-
-            responses = asyncio.get_event_loop().run_until_complete(
-                asyncio.gather(
-                    agent1.graph.ainvoke({"messages": [agent1_input]}),
-                    agent2.graph.ainvoke({"messages": [agent2_input]}),
-                )
-            )
-            response1, response2 = responses
-
-            # 全ての応答を得るまで待機
-            message1 = TalkFormat.model_validate_json(
-                response1["messages"][-1].content
-            ).reply
-            message2 = TalkFormat.model_validate_json(
-                response2["messages"][-1].content
-            ).reply
-
-            setattr(self.blackboard, f"{agent1_key}_response", message1)
-            setattr(self.blackboard, f"{agent2_key}_response", message2)
-        except Exception as e:
-            raise e
-
-        logger.debug(f"AgentAction: {agent1_key} の応答: {message1}")
-        logger.debug(f"AgentAction: {agent2_key} の応答: {message2}")
-        assert response1 is not None
-        assert response2 is not None
-
-        return py_trees.common.Status.SUCCESS
 
 
 class StartDebateAction(BaseAgentAction):
@@ -240,3 +257,42 @@ class DebateAction(BaseAgentAction):
         )
         prompt = "\n".join(prompt_prefix) + last_speaker_response
         return prompt
+
+
+class EndDebateAction(BaseMultiAgentAction):
+    def __init__(
+        self,
+        name: str,
+        agent_dict: dict[str, AiAgent],
+        debate: Debate,
+    ) -> None:
+        super().__init__(name, agent_dict)
+        self.debate = debate
+
+    def generate_prompt(self) -> list[str]:
+        winner = self.debate.judge_winner()
+
+        prompt = (
+            "ディベートが終了しました。結果を発表します。\n"
+            "今回のディベートはとても盛り上がりました。どちらが勝ってもお互いを尊重し合いましょう。\n"
+            f"勝者は{winner}です。おめでとうございます！"
+        )
+
+        return [prompt, prompt]
+
+
+class DummyUpdateAction(py_trees.behaviour.Behaviour):
+    def __init__(self, name: str, debate: Debate) -> None:
+        super(DummyUpdateAction, self).__init__(name)
+        self.debate = debate
+
+    def update(self) -> py_trees.common.Status:
+        self.debate.update("パイナップルは蜜柑より甘い")
+        self.debate.update("バナナはりんごより甘い")
+        self.debate.update("蜜柑はどんな果物よりも甘い")
+        self.debate.update("りんごは甘くない")
+
+        return py_trees.common.Status.SUCCESS
+
+    def initialise(self) -> None:
+        pass

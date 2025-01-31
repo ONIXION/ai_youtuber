@@ -1,5 +1,6 @@
 # python -m src.test.test_actions
 import logging
+import time
 from logging import Formatter, StreamHandler, getLogger
 
 import py_trees
@@ -10,12 +11,16 @@ from src.prompt_define import agent1_talk_prompt_txt, agent2_talk_prompt_txt
 from src.utils.actions import (
     ConversationAction,
     DebateAction,
+    DummyUpdateAction,
+    EndDebateAction,
     PickAgendaAction,
     PrepareDebateAction,
     SingleAgentAction,
     StartDebateAction,
 )
 from src.utils.browser_util import start_chrome
+from src.utils.debate import Debate
+from src.utils.embedding import EmbeddinEngine
 
 if __name__ == "__main__":
     logger = getLogger(__name__)
@@ -161,7 +166,57 @@ def print_response_callback(response: str) -> None:
 #     assert response1 != "" and response2 != ""
 
 
-def test_simple_debate() -> None:
+# def test_simple_debate() -> None:
+#     logger.info("test_prepare_debate start")
+#     logger.info("==========init==========")
+#     blackboard = py_trees.blackboard.Client(name="AgentDialog")
+#     blackboard.register_key(key="last_speaker", access=py_trees.common.Access.WRITE)
+#     blackboard.last_speaker = ""
+#     blackboard.register_key(key="agent1_response", access=py_trees.common.Access.WRITE)
+#     blackboard.agent1_response = ""
+#     blackboard.register_key(key="agent2_response", access=py_trees.common.Access.WRITE)
+#     blackboard.agent2_response = ""
+
+#     agent1 = AiAgent(
+#         "雲霧星奈",
+#         system_prompt=agent1_talk_prompt_txt,
+#         response_callback=print_response_callback,
+#         tool_list=[think, web_search],
+#     )
+#     agent2 = AiAgent(
+#         "星霧月音",
+#         system_prompt=agent2_talk_prompt_txt,
+#         response_callback=print_response_callback,
+#         tool_list=[think, web_search],
+#     )
+#     agent_dict = {"agent1": agent1, "agent2": agent2}
+
+#     def callback() -> list[str]:
+#         return ["りんごは蜜柑より甘い", "蜜柑はりんごより甘い"]
+
+#     root = py_trees.composites.Sequence("root", memory=False)
+#     root.add_children(
+#         [
+#             PrepareDebateAction("PrepareDebateAction", agent_dict, callback),
+#             StartDebateAction("StartDebateAction", agent_dict),
+#             DebateAction("DebateAction1", agent_dict),
+#             DebateAction("DebateAction2", agent_dict),
+#             DebateAction("DebateAction3", agent_dict),
+#         ]
+#     )
+
+#     logger.info("==========call action==========")
+#     root.tick_once()
+
+#     logger.info("==========assert==========")
+#     response1 = blackboard.agent1_response
+#     response2 = blackboard.agent2_response
+#     logger.info(f"agent1_response: {response1}")
+#     logger.info(f"agent2_response: {response2}")
+#     assert response1 != "" and response2 != ""
+
+
+def test_full_debate() -> None:
     logger.info("test_prepare_debate start")
     logger.info("==========init==========")
     blackboard = py_trees.blackboard.Client(name="AgentDialog")
@@ -172,19 +227,30 @@ def test_simple_debate() -> None:
     blackboard.register_key(key="agent2_response", access=py_trees.common.Access.WRITE)
     blackboard.agent2_response = ""
 
+    portA = 9222
+    portB = 9223
+
+    procA = start_chrome(portA, "C:/temp/chrome_profile_A")
+    procB = start_chrome(portB, "C:/temp/chrome_profile_B")
+
     agent1 = AiAgent(
         "雲霧星奈",
         system_prompt=agent1_talk_prompt_txt,
         response_callback=print_response_callback,
-        tool_list=[think, web_search],
+        tool_list=[think, web_search_creater(portA)],
     )
     agent2 = AiAgent(
         "星霧月音",
         system_prompt=agent2_talk_prompt_txt,
         response_callback=print_response_callback,
-        tool_list=[think, web_search],
+        tool_list=[think, web_search_creater(portB)],
     )
     agent_dict = {"agent1": agent1, "agent2": agent2}
+
+    embedding_engine = EmbeddinEngine()
+    debate = Debate("embedding_based_update", embedding_engine)
+
+    time.sleep(3)
 
     def callback() -> list[str]:
         return ["りんごは蜜柑より甘い", "蜜柑はりんごより甘い"]
@@ -192,16 +258,21 @@ def test_simple_debate() -> None:
     root = py_trees.composites.Sequence("root", memory=False)
     root.add_children(
         [
-            PrepareDebateAction("PrepareDebateAction", agent_dict, callback),
+            PrepareDebateAction("PrepareDebateAction", agent_dict, callback, debate),
             StartDebateAction("StartDebateAction", agent_dict),
             DebateAction("DebateAction1", agent_dict),
             DebateAction("DebateAction2", agent_dict),
-            DebateAction("DebateAction3", agent_dict),
+            DummyUpdateAction("DummyUpdateAction", debate),
+            EndDebateAction("EndDebateAction", agent_dict, debate),
         ]
     )
 
     logger.info("==========call action==========")
     root.tick_once()
+
+    # サブプロセスを終了
+    procA.terminate()
+    procB.terminate()
 
     logger.info("==========assert==========")
     response1 = blackboard.agent1_response
@@ -215,5 +286,6 @@ if __name__ == "__main__":
     # test_single_agent_action()
     # test_conversation()
     # test_prepare_debate()
-    test_simple_debate()
+    # test_simple_debate()
+    test_full_debate()
     # pytest.main(["-v", "-s", "src/test/test_actions.py"])
