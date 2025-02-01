@@ -14,9 +14,11 @@ from src.utils.actions import (
     DummyUpdateAction,
     EndDebateAction,
     PickAgendaAction,
+    PlayAgainAction,
     PrepareDebateAction,
     SingleAgentAction,
     StartDebateAction,
+    WaitingAction,
 )
 from src.utils.browser_util import start_chrome
 from src.utils.debate import Debate
@@ -273,6 +275,7 @@ def test_full_debate() -> None:
     # サブプロセスを終了
     procA.terminate()
     procB.terminate()
+    embedding_engine.close()
 
     logger.info("==========assert==========")
     response1 = blackboard.agent1_response

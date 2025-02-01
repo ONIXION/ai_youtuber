@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import random
+import time
 from abc import ABC, abstractmethod
 from logging import Formatter, StreamHandler, getLogger
 from typing import Callable
@@ -296,3 +297,69 @@ class DummyUpdateAction(py_trees.behaviour.Behaviour):
 
     def initialise(self) -> None:
         pass
+
+
+class UpdateAction(py_trees.behaviour.Behaviour):
+    def __init__(
+        self,
+        name: str,
+        debate: Debate,
+        fetch_comment_callback: Callable,
+        num_get_comment: int,
+    ) -> None:
+        super(UpdateAction, self).__init__(name)
+        self.debate = debate
+        self.loader = fetch_comment_callback
+        self.num_get_comment = num_get_comment
+
+    def update(self) -> py_trees.common.Status:
+        for _ in range(self.num_get_comment):
+            comment = self.loader()
+            assert isinstance(comment, str)
+            self.debate.update(comment)
+
+            time.sleep(1)
+
+        return py_trees.common.Status.SUCCESS
+
+    def initialise(self) -> None:
+        pass
+
+
+class WaitingAction(py_trees.behaviour.Behaviour):
+    def __init__(self, name: str, waiting_callback: Callable[[], bool]) -> None:
+        super().__init__(name)
+        self.waiting_callback = waiting_callback
+
+    def update(self) -> py_trees.common.Status:
+        while True:
+            if self.waiting_callback():
+                break
+            time.sleep(1)
+
+        return py_trees.common.Status.SUCCESS
+
+    def initialise(self) -> None:
+        pass
+
+
+class PlayAgainAction(py_trees.behaviour.Behaviour):
+    def __init__(self, name: str) -> None:
+        super(PlayAgainAction, self).__init__(name)
+        self.blackboard = self.attach_blackboard_client()
+        self.blackboard.register_key(
+            key="play_again_status", access=py_trees.common.Access.WRITE
+        )
+
+    def initialise(self) -> None:
+        pass
+
+    def update(self) -> py_trees.common.Status:
+        cont = input("もう一度行いますか？ (y/n): ").lower()
+        if cont == 'y':
+            self.blackboard.play_again_status = py_trees.common.Status.SUCCESS
+            return py_trees.common.Status.SUCCESS
+        else:
+            print("終了します。")
+            self.blackboard.play_again_status = py_trees.common.Status.FAILURE
+            return py_trees.common.Status.FAILURE
