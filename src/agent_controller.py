@@ -40,10 +40,11 @@ class DualAgentController:
         self,
         name_list: list[str],
         port_list: list[int],
-        response_callback_creater: Callable[[str], Callable],
+        response_callback_creater: Callable[[str], Callable[[str], None]],
         conversation_agenda_callback: Callable,
         debate_agenda_callback: Callable,
         waiting_callback: Callable,
+        fetch_comment_callback: Callable,
         num_update_comment: int,
     ) -> None:
         logger.info("==========init Agent==========")
@@ -111,27 +112,34 @@ class DualAgentController:
                     self.agent_dict,
                     debate_agenda_callback,
                     self.debate,
+                    mode="Think",
                 ),
                 WaitingAction("WaitingAction1", waiting_callback),
                 StartDebateAction("StartDebateAction", self.agent_dict),
                 UpdateAction(
-                    "UpdateAction1", self.agent_dict, self.debate, num_update_comment
+                    "UpdateAction1",
+                    self.debate,
+                    fetch_comment_callback,
+                    num_update_comment,
                 ),
                 WaitingAction("WaitingAction1", waiting_callback),
                 DebateAction("DebateAction1", self.agent_dict),
                 UpdateAction(
-                    "UpdateAction1", self.agent_dict, self.debate, num_update_comment
+                    "UpdateAction1",
+                    self.debate,
+                    fetch_comment_callback,
+                    num_update_comment,
                 ),
                 WaitingAction("WaitingAction1", waiting_callback),
                 DebateAction("DebateAction2", self.agent_dict),
                 UpdateAction(
-                    "UpdateAction1", self.agent_dict, self.debate, num_update_comment
+                    "UpdateAction1",
+                    self.debate,
+                    fetch_comment_callback,
+                    num_update_comment,
                 ),
                 WaitingAction("WaitingAction1", waiting_callback),
                 EndDebateAction("EndDebateAction", self.agent_dict, self.debate),
-                UpdateAction(
-                    "UpdateAction1", self.agent_dict, self.debate, num_update_comment
-                ),
                 WaitingAction("WaitingAction1", waiting_callback),
                 PlayAgainAction("PlayAgainAction"),
             ]

@@ -195,11 +195,13 @@ class PrepareDebateAction(BaseMultiAgentAction):
         agent_dict: dict[str, AiAgent],
         create_agenda_callback: Callable,
         debate: Debate,
+        mode: str = "WebSearch",
     ) -> None:
         super().__init__(name, agent_dict)
         self.loader = create_agenda_callback
         self.agenda: list[str] = []
         self.debate = debate
+        self.mode = mode
 
     def start_new_debate(self) -> None:
         self.agenda = self.loader()
@@ -216,12 +218,22 @@ class PrepareDebateAction(BaseMultiAgentAction):
     def generate_prompt(self) -> list[str]:
         self.start_new_debate()
 
-        prompt_prefix = (
-            "これから相方とディベートを行ってもらいます。あなたは以下の主張を正当化し、相方を論破してください。",
-            "最初にシンキングタイムが与えられますので、あなたの主張を裏付ける根拠を調べて、準備してください。:\n",
-            "WebSearchを使用し、Thinkは使用しないでください\n",
-            "主張：",
-        )
+        if self.mode == "WebSearch":
+            prompt_prefix = (
+                "これから相方とディベートを行ってもらいます。あなたは以下の主張を正当化し、相方を論破してください。",
+                "最初にシンキングタイムが与えられますので、あなたの主張を裏付ける根拠を調べて、準備してください。:\n",
+                "WebSearchを使用し、Thinkは使用しないでください\n",
+                "主張：",
+            )
+        elif self.mode == "Think":
+            prompt_prefix = (
+                "これから相方とディベートを行ってもらいます。あなたは以下の主張を正当化し、相方を論破してください。",
+                "最初にシンキングタイムが与えられますので、あなたの主張を裏付ける根拠を考えて、準備してください。:\n",
+                "Thinkを使用し、WebSearchは使用しないでください\n",
+                "主張：",
+            )
+        else:
+            raise ValueError("modeは'WebSearch'または'Think'である必要があります")
         prompt1 = "\n".join(prompt_prefix) + self.agenda[0]
         prompt2 = "\n".join(prompt_prefix) + self.agenda[1]
         return [prompt1, prompt2]
@@ -276,7 +288,7 @@ class EndDebateAction(BaseMultiAgentAction):
         prompt = (
             "ディベートが終了しました。結果を発表します。\n"
             "今回のディベートはとても盛り上がりました。どちらが勝ってもお互いを尊重し合いましょう。\n"
-            f"勝者は{winner}です。おめでとうございます！"
+            f"勝者は{self.agent_dict[winner].name}です。おめでとうございます！"
         )
 
         return [prompt, prompt]
@@ -318,7 +330,7 @@ class UpdateAction(py_trees.behaviour.Behaviour):
             assert isinstance(comment, str)
             self.debate.update(comment)
 
-            time.sleep(1)
+            time.sleep(5)
 
         return py_trees.common.Status.SUCCESS
 
