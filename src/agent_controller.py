@@ -152,6 +152,8 @@ class DualAgentController:
         self.embedding_engine.close()
         del self.embedding_engine
         del self.debate
+        del self.agent1
+        del self.agent2
 
     def start_dialog(self) -> None:
         while True:

@@ -7,7 +7,7 @@ from websockets.legacy.server import WebSocketServerProtocol, serve
 
 
 class WebSocketServer:
-    def __init__(self, host: str = "localhost", port: int = 5000):
+    def __init__(self, host: str = "localhost", port: int = 5000, debug: bool = False):
         self.host = host
         self.port = port
         self.clients: Set[WebSocketServerProtocol] = set()
@@ -15,6 +15,7 @@ class WebSocketServer:
         self._server_thread: Optional[threading.Thread] = None
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self.unity_flag = False  # これがTrueの時だけコメントを抽選
+        self.debug = debug
 
     async def _handle_client(
         self, websocket: WebSocketServerProtocol, path: str
@@ -53,9 +54,11 @@ class WebSocketServer:
                         error_message = json.dumps({"error": "Invalid JSON format"})
                         await self._send_message(
                             websocket,
+                            name="Server",
                             reply=error_message,
                             action="Error",
                             emotion="normal",
+                            scene="",
                         )
 
                 except asyncio.CancelledError:
@@ -124,7 +127,13 @@ class WebSocketServer:
         print("WebSocket server stopped")
 
     async def _send_message(
-        self, client: WebSocketServerProtocol, reply: str, action: str, emotion: str
+        self,
+        client: WebSocketServerProtocol,
+        name: str,
+        reply: str,
+        action: str,
+        emotion: str,
+        scene: str,
     ) -> None:
         """単一のクライアントにメッセージを送信"""
         if client is None or client.closed:
@@ -132,13 +141,30 @@ class WebSocketServer:
             self.clients.discard(client)
             return
         try:
-            message = json.dumps({"reply": reply, "action": action, "emotion": emotion})
+            message = json.dumps(
+                {
+                    "name": name,
+                    "reply": reply,
+                    "action": action,
+                    "emotion": emotion,
+                    "scene": scene,
+                }
+            )
             await client.send(message)
+
+            if self.debug:
+                print(f"Sent message:\r\n {message}")
+
+            await asyncio.sleep(1.0)
+            self.unity_flag = True
+
         except Exception as e:
             print(f"Failed to send message: {str(e)}")
             self.clients.discard(client)
 
-    def send_message_to_all(self, reply: str, action: str, emotion: str) -> None:
+    def send_message_to_all(
+        self, name: str, reply: str, action: str, emotion: str, scene: str
+    ) -> None:
         """全クライアントにメッセージを送信"""
         if self._loop is None or not self._loop.is_running():
             print("Server is not running")
@@ -152,7 +178,12 @@ class WebSocketServer:
                 await asyncio.gather(
                     *[
                         self._send_message(
-                            client, reply=reply, action=action, emotion=emotion
+                            client,
+                            name=name,
+                            reply=reply,
+                            action=action,
+                            emotion=emotion,
+                            scene=scene,
                         )
                         for client in self.clients
                     ]
@@ -175,7 +206,9 @@ if __name__ == "__main__":
             message = input("Enter message to send (or 'quit' to exit): ")
             if message.lower() == 'quit':
                 break
-            server.send_message_to_all(message, "Test", "normal")
+            server.send_message_to_all(
+                name="server", reply=message, action="Test", emotion="normal", scene=""
+            )
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:
