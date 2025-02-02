@@ -71,14 +71,14 @@ def test_DualAgentController() -> None:
     num_update_comment = 1
 
     agent_controller = DualAgentController(
-        name_list,
-        port_list,
-        response_callback_creater,
-        conversation_agenda_callback,
-        debate_agenda_callback,
-        waiting_callback,
-        fetch_comment_callback_creater(),
-        num_update_comment,
+        name_list=name_list,
+        port_list=port_list,
+        response_callback_creater=response_callback_creater,
+        conversation_agenda_callback=conversation_agenda_callback,
+        debate_agenda_callback=debate_agenda_callback,
+        waiting_callback=waiting_callback,
+        fetch_comment_callback=fetch_comment_callback_creater(),
+        num_update_comment=num_update_comment,
     )
 
     logger.info("==========test==========")

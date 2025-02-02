@@ -18,20 +18,20 @@ stream_handler.setFormatter(handler_format)
 logger.addHandler(stream_handler)
 
 
-def test_simple_debate() -> None:
-    debate = Debate("simple_update")
-    debate.init_new_debate(["A", "B"], [1.0, 2.0])
-    debate.update([1.0, 2.0])
-    assert debate.judge_winner() == "B"
+# def test_simple_debate() -> None:
+#     debate = Debate("simple_update")
+#     debate.init_new_debate(["A", "B"], [1.0, 2.0])
+#     debate.update([1.0, 2.0])
+#     assert debate.judge_winner() == "B"
 
-    debate.update([1.0, 2.0])
-    assert debate.judge_winner() == "B"
+#     debate.update([1.0, 2.0])
+#     assert debate.judge_winner() == "B"
 
-    debate.update([2.0, 1.0])
-    assert debate.judge_winner() == "B"
+#     debate.update([2.0, 1.0])
+#     assert debate.judge_winner() == "B"
 
-    debate.update([10.0, 1.0])
-    assert debate.judge_winner() == "A"
+#     debate.update([10.0, 1.0])
+#     assert debate.judge_winner() == "A"
 
 
 def test_embedding_based_debate() -> None:

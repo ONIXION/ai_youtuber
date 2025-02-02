@@ -75,14 +75,14 @@ class DualAgentController:
 
         self.agent1 = AiAgent(
             # "雲霧星奈",
-            name_list[0],
+            name=name_list[0],
             system_prompt=agent1_talk_prompt_txt,
             response_callback=response_callback_creater(name_list[0]),
             tool_list=[think, web_search_creater(self.port_list[0])],
         )
         self.agent2 = AiAgent(
             # "星霧月音",
-            name_list[1],
+            name=name_list[1],
             system_prompt=agent2_talk_prompt_txt,
             response_callback=response_callback_creater(name_list[1]),
             tool_list=[think, web_search_creater(self.port_list[1])],

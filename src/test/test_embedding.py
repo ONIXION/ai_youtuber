@@ -58,4 +58,5 @@ def console_test_embedding() -> None:
 
 
 if __name__ == "__main__":
-    pytest.main(["-v", "-s", "src/test/test_embedding.py"])
+    console_test_embedding()
+    # pytest.main(["-v", "-s", "src/test/test_embedding.py"])

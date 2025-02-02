@@ -87,7 +87,8 @@ class EmbeddingRunnable(Runnable[str, List[float]]):
             model_kwargs={
                 "model_kwargs": {
                     "torch_dtype": torch.float16,
-                }
+                },
+                "device": "cuda",
             },
         )
 
@@ -127,7 +128,7 @@ class EmbeddinEngine:
             ]
         # インタラクティブモードの有効化
         plt.ion()
-        _, self.ax = plt.subplots(figsize=(10, 8))
+        self.fig, self.ax = plt.subplots(figsize=(10, 8))
         self.scatter = None
         self.chain: RunnableSequence | None = None
         self.embedding_memory: EmbeddingMemory | None = None
@@ -229,8 +230,9 @@ class EmbeddinEngine:
         for i, txt in enumerate(texts):
             ax.annotate(txt, (embeddings_2d[i, 0], embeddings_2d[i, 1]))
         ax.set_title("UMAP projection with Clustering")
-        plt.draw()
-        plt.pause(0.001)  # 描画をリフレッシュ
+        self.fig.canvas.draw()
+        plt.pause(0.1)
+
         return scatter
 
     def _clusterring(self, embeddings: Any) -> List[List[int]]:

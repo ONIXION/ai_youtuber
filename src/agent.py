@@ -4,6 +4,7 @@ from logging import Formatter, StreamHandler, getLogger
 from typing import Annotated, Any, Literal
 
 import chromadb
+import torch
 from browser_use import Agent, Browser, BrowserConfig, Controller
 from browser_use.browser.context import BrowserContext, BrowserContextConfig
 from dotenv import load_dotenv
@@ -70,7 +71,11 @@ class TalkFormat(BaseModel):
 
 # ThinkModelをtoolとして定義
 @tool
-async def think(input: Annotated[str, "what to think about"]) -> Any:
+async def think(
+    input: Annotated[str, "what to think about"],
+    name: str = "Think",
+    description: str = "Thinkツール: 入力について深く考え、適切な返答を生成します。",
+) -> Any:
     """Think about the input."""
     max_retries = 3
     for attempt in range(max_retries):
@@ -127,7 +132,11 @@ def web_search_creater(browser_port: int) -> Any:
     context = BrowserContext(browser=browser, config=config)
 
     @tool
-    async def _web_search(input: str) -> Any:
+    async def _web_search(
+        input: str,
+        name: str = "WebSearch",
+        description: str = "WebSearchツール: 指定されたブラウザポートを使用して、ウェブ検索を実行します。",
+    ) -> Any:
         """Search the web for the input."""
         agent = Agent(
             task=input,
@@ -220,6 +229,10 @@ class AiAgent:
         embeddings = HuggingFaceEmbeddings(
             model_name="sbintuitions/sarashina-embedding-v1-1b",
             cache_folder="models",
+            model_kwargs={
+                "model_kwargs": {"torch_dtype": torch.float16},
+                "device": "cuda",
+            },
         )
         client = chromadb.PersistentClient(path=path)
         vector_store = Chroma(
