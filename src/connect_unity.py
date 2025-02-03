@@ -1,9 +1,22 @@
 import asyncio
 import json
+import subprocess
+import sys
 import threading
 from typing import Optional, Set
 
 from websockets.legacy.server import WebSocketServerProtocol, serve
+
+
+def start_server_log_receiver() -> subprocess.Popen:
+    """
+    サーバー用ログ受信用のターミナルを新規起動する。
+    cmd の /k オプションにより、スクリプト終了後もターミナルを維持します。
+    """
+    return subprocess.Popen(
+        ["cmd", "/k", sys.executable, "src/test/dummy_unity_client.py"],
+        creationflags=subprocess.CREATE_NEW_CONSOLE,
+    )
 
 
 class WebSocketServer:
@@ -16,6 +29,7 @@ class WebSocketServer:
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self.unity_flag = False  # これがTrueの時だけコメントを抽選
         self.debug = debug
+        self._dummy_client: subprocess.Popen | None = None
 
     async def _handle_client(
         self, websocket: WebSocketServerProtocol, path: str
@@ -81,6 +95,12 @@ class WebSocketServer:
 
     def start(self) -> None:
         """サーバーを別スレッドで開始"""
+        if self.debug:
+            print("Creating new dummy client for server log")
+            self._dummy_client = start_server_log_receiver()
+            # 待機
+            asyncio.run(asyncio.sleep(1))
+
         if self._server_thread is not None:
             print("Server is already running")
             return
@@ -126,6 +146,17 @@ class WebSocketServer:
         self._loop = None
         print("WebSocket server stopped")
 
+        # ダミークライアントのプロセスがあれば終了する
+        if self._dummy_client is not None:
+            try:
+                self._dummy_client.terminate()
+                self._dummy_client.wait(timeout=5)
+                print("Dummy client process terminated.")
+            except Exception as e:
+                print(f"Failed to terminate dummy client process: {e}")
+            finally:
+                self._dummy_client_process = None
+
     async def _send_message(
         self,
         client: WebSocketServerProtocol,
@@ -153,10 +184,8 @@ class WebSocketServer:
             await client.send(message)
 
             if self.debug:
-                print(f"Sent message:\r\n {message}")
-
-            await asyncio.sleep(1.0)
-            self.unity_flag = True
+                await asyncio.sleep(1.0)
+                self.unity_flag = True
 
         except Exception as e:
             print(f"Failed to send message: {str(e)}")
