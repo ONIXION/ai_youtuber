@@ -66,21 +66,24 @@ class YoutubeLive:
             self.youtube = DummyYouTubeLiveChat()
 
         # 必要なsubprocessを開始
-        subprocess.Popen(
-            [AIvisSpeech_EXECUTABLE],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        subprocess.Popen(
-            [BouyomiChan_EXECUTABLE],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        subprocess.Popen(
-            [UnityApp_EXECUTABLE], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-        # 5秒待機
-        asyncio.run(asyncio.sleep(5))
+        if not mode == "test":
+            subprocess.Popen(
+                [AIvisSpeech_EXECUTABLE],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            subprocess.Popen(
+                [BouyomiChan_EXECUTABLE],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            subprocess.Popen(
+                [UnityApp_EXECUTABLE],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            # 5秒待機
+            asyncio.run(asyncio.sleep(5))
 
         # agent_controllerの初期化
         name_list = ["雲霧星奈", "星霧月音"]
@@ -91,10 +94,10 @@ class YoutubeLive:
             name_list=name_list,
             port_list=port_list,
             response_callback_creater=self.response_callback_creator,
-            conversation_agenda_callback=self.youtube.get_random_comment,
-            debate_agenda_callback=self.youtube.get_random_comment,
+            conversation_agenda_callback=self.get_random_comment_callback,
+            debate_agenda_callback=self.get_random_comment_callback,
             waiting_callback=self.waiting_callback,
-            fetch_comment_callback=self.youtube.get_random_comment,
+            fetch_comment_callback=self.get_random_comment_callback,
             num_update_comment=num_update_comment,
         )
 
@@ -104,6 +107,8 @@ class YoutubeLive:
 
     def start(self) -> None:
         """対話を開始する"""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         self.agent_controller.start_dialog()
 
     def close(self) -> None:
@@ -167,6 +172,16 @@ class YoutubeLive:
         )
         assert isinstance(url, str)
         return url
+
+    def get_random_comment_callback(self) -> str:
+        while True:
+            res = self.youtube.get_random_comment()["text"]
+            if res is not None:
+                break
+            asyncio.run(asyncio.sleep(1))
+
+        assert isinstance(res, str)
+        return res
 
 
 if __name__ == "__main__":

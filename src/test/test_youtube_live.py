@@ -33,4 +33,5 @@ def test_youtube_live() -> None:
 
 
 if __name__ == "__main__":
-    pytest.main(["-v", "-s", "src/test/test_youtube_live.py"])
+    test_youtube_live()
+    # pytest.main(["-v", "-s", "src/test/test_youtube_live.py"])

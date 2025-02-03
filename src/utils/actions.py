@@ -199,20 +199,20 @@ class PrepareDebateAction(BaseMultiAgentAction):
     ) -> None:
         super().__init__(name, agent_dict)
         self.loader = create_agenda_callback
-        self.agenda: list[str] = []
+        self.agenda: str = ""
+        self.agenda_list: list[str] = ["", ""]
         self.debate = debate
         self.mode = mode
 
     def start_new_debate(self) -> None:
         self.agenda = self.loader()
-        assert isinstance(self.agenda, list), "agendaはlist型である必要があります"
-        assert len(self.agenda) == 2, "agendaの長さは2である必要があります"
-        assert all(
-            [isinstance(item, str) for item in self.agenda]
-        ), "agendaはstr型のリストである必要があります"
+        assert isinstance(self.agenda, str), "agendaはstr型である必要があります"
+
+        self.agenda_list[0] = f"{self.agenda}は正しい"
+        self.agenda_list[1] = f"{self.agenda}は誤り"
 
         self.debate.init_new_debate(
-            names=list(self.agent_dict.keys()), arguments=self.agenda
+            names=list(self.agent_dict.keys()), arguments=self.agenda_list
         )
 
     def generate_prompt(self) -> list[str]:
@@ -234,8 +234,8 @@ class PrepareDebateAction(BaseMultiAgentAction):
             )
         else:
             raise ValueError("modeは'WebSearch'または'Think'である必要があります")
-        prompt1 = "\n".join(prompt_prefix) + self.agenda[0]
-        prompt2 = "\n".join(prompt_prefix) + self.agenda[1]
+        prompt1 = "\n".join(prompt_prefix) + self.agenda_list[0]
+        prompt2 = "\n".join(prompt_prefix) + self.agenda_list[1]
         return [prompt1, prompt2]
 
 
