@@ -39,7 +39,7 @@ if __name__ == "__main__":
     stream_handler.setFormatter(handler_format)
     logger.addHandler(stream_handler)
 else:
-    logger = getLogger("__main__")
+    logger = getLogger("__main__").getChild(__name__)
     logger.setLevel(logging.WARNING)
 
 
@@ -70,10 +70,8 @@ class TalkFormat(BaseModel):
 
 
 # ThinkModelをtoolとして定義
-@tool("Think")
-async def think(
-    input: Annotated[str, "what to think about"], name: str = "Think"
-) -> Any:
+@tool()
+async def think(input: Annotated[str, "what to think about"]) -> Any:
     """Think about the input."""
     max_retries = 3
     for attempt in range(max_retries):
@@ -129,15 +127,16 @@ def web_search_creater(browser_port: int) -> Any:
     )
     context = BrowserContext(browser=browser, config=config)
 
-    @tool("WebSearch")
+    @tool()
     async def _web_search(
         input: str,
-        name: str = "WebSearch",
     ) -> Any:
         """Search the web for the input."""
+        logger.info(f"WebSearch: {input}")
         agent = Agent(
             task=input,
             llm=ChatOpenAI(model='gpt-4o'),
+            controller=Controller(),
             browser_context=context,
         )
         result = await agent.run()

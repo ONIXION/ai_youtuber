@@ -207,7 +207,7 @@ class YoutubeLive:
 
         self.unity_server.send_message_to_all(
             name="message",
-            reply="",
+            reply=res,
             action="",
             emotion="",
             scene="",
