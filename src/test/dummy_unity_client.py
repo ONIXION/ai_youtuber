@@ -16,14 +16,19 @@ async def dummy_client() -> None:
             print("送信メッセージ:", test_message)
 
             while True:
-                # サーバーからのメッセージを受信するまで待機する
+                # サーバーからのメッセージを待機する
                 print("サーバーからのメッセージを待機中...")
                 reply = await websocket.recv()
-                print("受信メッセージ:", reply)
+                # 受信した文字列をJSONとしてパース
+                try:
+                    data = json.loads(reply)
+                    print("受信メッセージ:", data)
+                except json.JSONDecodeError:
+                    print("JSONのパースに失敗しました。受信内容:", reply)
 
                 # 'Finish' メッセージを送信して終了
                 finish_message = {"message": "Finish"}
-                await websocket.send(json.dumps(finish_message))
+                await websocket.send(json.dumps(finish_message, ensure_ascii=False))
                 print("送信メッセージ:", finish_message)
 
                 # 少し待ってから接続を閉じる

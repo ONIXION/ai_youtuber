@@ -10,6 +10,7 @@ dependencies = [
     { name = "aiohttp" },
     { name = "browser-use" },
     { name = "google-auth-oauthlib" },
+    { name = "google-generativeai" },
     { name = "hdbscan" },
     { name = "japanize-matplotlib" },
     { name = "langchain-chroma" },
@@ -33,12 +34,13 @@ dependencies = [
 requires-dist = [
     { name = "aiohappyeyeballs", specifier = ">=2.4.4" },
     { name = "aiohttp", specifier = ">=3.11.11" },
-    { name = "browser-use", specifier = ">=0.1.20" },
+    { name = "browser-use", specifier = "==0.1.20" },
     { name = "google-auth-oauthlib", specifier = ">=1.2.1" },
+    { name = "google-generativeai", specifier = "==0.8.3" },
     { name = "hdbscan", specifier = ">=0.8.40" },
     { name = "japanize-matplotlib", specifier = ">=1.1.3" },
     { name = "langchain-chroma", specifier = ">=0.2.1" },
-    { name = "langchain-google-genai", specifier = ">=2.0.9" },
+    { name = "langchain-google-genai", specifier = "==2.0.8" },
     { name = "langchain-huggingface", specifier = ">=0.1.2" },
     { name = "langchain-openai", specifier = ">=0.3.3" },
     { name = "langgraph", specifier = ">=0.2.69" },
@@ -216,14 +218,15 @@ wheels = [
 
 [[package]]
 name = "beautifulsoup4"
-version = "4.12.3"
+version = "4.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "soupsieve" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/ca/824b1195773ce6166d388573fc106ce56d4a805bd7427b624e063596ec58/beautifulsoup4-4.12.3.tar.gz", hash = "sha256:74e3d1928edc070d21748185c46e3fb33490f22f52a3addee9aee0f4f7781051", size = 581181 }
+sdist = { url = "https://files.pythonhosted.org/packages/58/f3/d90227cc52f7b8fcd0f2af804f56e55edf8dd07036b681a2809e3245318b/beautifulsoup4-4.13.1.tar.gz", hash = "sha256:741c8b6903a1e4ae8ba32b9c9ae7510dab7a197fdbadcf9fcdeb0891ef5ec66a", size = 618295 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/fe/e8c672695b37eecc5cbf43e1d0638d88d66ba3a44c4d321c796f4e59167f/beautifulsoup4-4.12.3-py3-none-any.whl", hash = "sha256:b80878c9f40111313e55da8ba20bdba06d8fa3969fc68304167741bbf9e082ed", size = 147925 },
+    { url = "https://files.pythonhosted.org/packages/18/75/899bf9b6270b2ce5e8f01b8da121b29e4b88256feb2cf6c6418d4cc42130/beautifulsoup4-4.13.1-py3-none-any.whl", hash = "sha256:72465267014897bb10ca749bb632bde6c2d20f3254afd5458544bd74e6c2e6d8", size = 185056 },
 ]
 
 [[package]]
@@ -649,7 +652,7 @@ wheels = [
 
 [[package]]
 name = "google-ai-generativelanguage"
-version = "0.6.15"
+version = "0.6.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-api-core", extra = ["grpc"] },
@@ -657,9 +660,9 @@ dependencies = [
     { name = "proto-plus" },
     { name = "protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/11/d1/48fe5d7a43d278e9f6b5ada810b0a3530bbeac7ed7fcbcd366f932f05316/google_ai_generativelanguage-0.6.15.tar.gz", hash = "sha256:8f6d9dc4c12b065fe2d0289026171acea5183ebf2d0b11cefe12f3821e159ec3", size = 1375443 }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/71/46543c398629bb883b769041fc10278d4d63aaa2c34744dede1b84ec0207/google_ai_generativelanguage-0.6.10.tar.gz", hash = "sha256:6fa642c964d8728006fe7e8771026fc0b599ae0ebeaf83caf550941e8e693455", size = 795200 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7c/a3/67b8a6ff5001a1d8864922f2d6488dc2a14367ceb651bc3f09a947f2f306/google_ai_generativelanguage-0.6.15-py3-none-any.whl", hash = "sha256:5a03ef86377aa184ffef3662ca28f19eeee158733e45d7947982eb953c6ebb6c", size = 1327356 },
+    { url = "https://files.pythonhosted.org/packages/af/6d/db99a295f9caf027bbdd90c41e6ea650a7468392a0e8713719e7abc5f647/google_ai_generativelanguage-0.6.10-py3-none-any.whl", hash = "sha256:854a2bf833d18be05ad5ef13c755567b66a4f4a870f099b62c61fe11bddabcf4", size = 760045 },
 ]
 
 [[package]]
@@ -742,7 +745,7 @@ wheels = [
 
 [[package]]
 name = "google-generativeai"
-version = "0.8.4"
+version = "0.8.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-ai-generativelanguage" },
@@ -755,7 +758,7 @@ dependencies = [
     { name = "typing-extensions" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/b0/6c6af327a8a6ef3be6fe79be1d6f1e2914d6c363aa6b081b93396f4460a7/google_generativeai-0.8.4-py3-none-any.whl", hash = "sha256:e987b33ea6decde1e69191ddcaec6ef974458864d243de7191db50c21a7c5b82", size = 175409 },
+    { url = "https://files.pythonhosted.org/packages/e9/2f/b5c1d62e94409ed98d5425e83b8e6d3dd475b611be272f561b1a545d273a/google_generativeai-0.8.3-py3-none-any.whl", hash = "sha256:1108ff89d5b8e59f51e63d1a8bf84701cd84656e17ca28d73aeed745e736d9b7", size = 160822 },
 ]
 
 [[package]]
@@ -907,17 +910,18 @@ wheels = [
 
 [[package]]
 name = "httpx"
-version = "0.28.1"
+version = "0.27.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "certifi" },
     { name = "httpcore" },
     { name = "idna" },
+    { name = "sniffio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b1/df/48c586a5fe32a0f01324ee087459e112ebb7224f646c0b5023f5e79e9956/httpx-0.28.1.tar.gz", hash = "sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc", size = 141406 }
+sdist = { url = "https://files.pythonhosted.org/packages/78/82/08f8c936781f67d9e6b9eeb8a0c8b4e406136ea4c3d1f89a5db71d42e0e6/httpx-0.27.2.tar.gz", hash = "sha256:f7c2be1d2f3c3c3160d441802406b206c2b76f5947b11115e6df10c6c65e66c2", size = 144189 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad", size = 73517 },
+    { url = "https://files.pythonhosted.org/packages/56/95/9377bcb415797e44274b51d46e3249eba641711cf3348050f76ee7b15ffc/httpx-0.27.2-py3-none-any.whl", hash = "sha256:7bb2708e112d8fdd7829cd4243970f0c223274051cb35ee80c03301ee29a3df0", size = 76395 },
 ]
 
 [[package]]
@@ -1252,7 +1256,7 @@ wheels = [
 
 [[package]]
 name = "langchain-google-genai"
-version = "2.0.9"
+version = "2.0.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "filetype" },
@@ -1260,9 +1264,9 @@ dependencies = [
     { name = "langchain-core" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fb/1f/2a275165ba5a455147472682db71ca4cc45e414cfb37c1245efe283d4f43/langchain_google_genai-2.0.9.tar.gz", hash = "sha256:65205089da1f72688a0ed6e7c6914af308b6514ab8038fd8126ecb20f1df234c", size = 37437 }
+sdist = { url = "https://files.pythonhosted.org/packages/ee/8e/d12bb50ff1350038b1aba58bec84d5926872fb01308dbd70ceb5898d3c5f/langchain_google_genai-2.0.8.tar.gz", hash = "sha256:4ca8d2a4201ce8b741e372ef1a97c809a1beeae39a163eebfdaaa07009f44787", size = 37255 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c2/6a/b6cbd72b820d31cf35fe677cc844220aa82a09b92167d43ade815acdec4d/langchain_google_genai-2.0.9-py3-none-any.whl", hash = "sha256:48d8c78c42048d54f40dff333db9d359746644e0feb0e08b5eabdf34ad7149ca", size = 41698 },
+    { url = "https://files.pythonhosted.org/packages/b7/1a/ab73671bd7c8a026e828ced2e2984ed1199602303f0784db3d0dfc5aaa65/langchain_google_genai-2.0.8-py3-none-any.whl", hash = "sha256:546f5bf4429fe322feb25b60111135477f9af027226be35b95e9ebcf265259fd", size = 41500 },
 ]
 
 [[package]]

@@ -31,6 +31,10 @@ class WebSocketServer:
         self.debug = debug
         self._dummy_client: subprocess.Popen | None = None
 
+    def __del__(self) -> None:
+        """デコンストラクタ"""
+        self.stop()
+
     async def _handle_client(
         self, websocket: WebSocketServerProtocol, path: str
     ) -> None:
@@ -182,10 +186,6 @@ class WebSocketServer:
                 }
             )
             await client.send(message)
-
-            if self.debug:
-                await asyncio.sleep(1.0)
-                self.unity_flag = True
 
         except Exception as e:
             print(f"Failed to send message: {str(e)}")

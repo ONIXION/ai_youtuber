@@ -45,6 +45,7 @@ class DualAgentController:
         debate_agenda_callback: Callable,
         waiting_callback: Callable,
         fetch_comment_callback: Callable,
+        scene_transition_callback: Callable,
         num_update_comment: int,
     ) -> None:
         logger.info("==========init Agent==========")
@@ -98,50 +99,64 @@ class DualAgentController:
         self.root.add_children(
             [
                 PickAgendaAction(
-                    "PickAgendaAction", self.agent_dict, conversation_agenda_callback
+                    name="PickAgendaAction",
+                    agent_dict=self.agent_dict,
+                    fetch_comment_callback=conversation_agenda_callback,
+                    scene_transition_callback=scene_transition_callback,
                 ),
-                WaitingAction("WaitingAction1", waiting_callback),
-                ConversationAction("ConversationAction1", self.agent_dict),
-                WaitingAction("WaitingAction1", waiting_callback),
-                ConversationAction("ConversationAction2", self.agent_dict),
-                WaitingAction("WaitingAction1", waiting_callback),
-                ConversationAction("ConversationAction3", self.agent_dict),
-                WaitingAction("WaitingAction1", waiting_callback),
+                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                ConversationAction(
+                    name="ConversationAction1", agent_dict=self.agent_dict
+                ),
+                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                ConversationAction(
+                    name="ConversationAction2", agent_dict=self.agent_dict
+                ),
+                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                ConversationAction(
+                    name="ConversationAction3", agent_dict=self.agent_dict
+                ),
+                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
                 PrepareDebateAction(
-                    "PrepareDebateAction",
-                    self.agent_dict,
-                    debate_agenda_callback,
-                    self.debate,
-                    mode="Think",
+                    name="PrepareDebateAction",
+                    agent_dict=self.agent_dict,
+                    create_agenda_callback=debate_agenda_callback,
+                    debate=self.debate,
+                    scene_transition_callback=scene_transition_callback,
+                    mode="WebSearch",
                 ),
-                WaitingAction("WaitingAction1", waiting_callback),
-                StartDebateAction("StartDebateAction", self.agent_dict),
+                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                StartDebateAction(name="StartDebateAction", agent_dict=self.agent_dict),
                 UpdateAction(
-                    "UpdateAction1",
-                    self.debate,
-                    fetch_comment_callback,
-                    num_update_comment,
+                    name="UpdateAction1",
+                    debate=self.debate,
+                    fetch_comment_callback=fetch_comment_callback,
+                    num_get_comment=num_update_comment,
                 ),
-                WaitingAction("WaitingAction1", waiting_callback),
-                DebateAction("DebateAction1", self.agent_dict),
+                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                DebateAction(name="DebateAction1", agent_dict=self.agent_dict),
                 UpdateAction(
-                    "UpdateAction1",
-                    self.debate,
-                    fetch_comment_callback,
-                    num_update_comment,
+                    name="UpdateAction1",
+                    debate=self.debate,
+                    fetch_comment_callback=fetch_comment_callback,
+                    num_get_comment=num_update_comment,
                 ),
-                WaitingAction("WaitingAction1", waiting_callback),
-                DebateAction("DebateAction2", self.agent_dict),
+                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                DebateAction(name="DebateAction2", agent_dict=self.agent_dict),
                 UpdateAction(
-                    "UpdateAction1",
-                    self.debate,
-                    fetch_comment_callback,
-                    num_update_comment,
+                    name="UpdateAction1",
+                    debate=self.debate,
+                    fetch_comment_callback=fetch_comment_callback,
+                    num_get_comment=num_update_comment,
                 ),
-                WaitingAction("WaitingAction1", waiting_callback),
-                EndDebateAction("EndDebateAction", self.agent_dict, self.debate),
-                WaitingAction("WaitingAction1", waiting_callback),
-                PlayAgainAction("PlayAgainAction"),
+                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                EndDebateAction(
+                    name="EndDebateAction",
+                    agent_dict=self.agent_dict,
+                    debate=self.debate,
+                ),
+                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                PlayAgainAction(name="PlayAgainAction"),
             ]
         )
 

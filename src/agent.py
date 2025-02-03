@@ -70,11 +70,9 @@ class TalkFormat(BaseModel):
 
 
 # ThinkModelをtoolとして定義
-@tool
+@tool("Think")
 async def think(
-    input: Annotated[str, "what to think about"],
-    name: str = "Think",
-    description: str = "Thinkツール: 入力について深く考え、適切な返答を生成します。",
+    input: Annotated[str, "what to think about"], name: str = "Think"
 ) -> Any:
     """Think about the input."""
     max_retries = 3
@@ -131,11 +129,10 @@ def web_search_creater(browser_port: int) -> Any:
     )
     context = BrowserContext(browser=browser, config=config)
 
-    @tool
+    @tool("WebSearch")
     async def _web_search(
         input: str,
         name: str = "WebSearch",
-        description: str = "WebSearchツール: 指定されたブラウザポートを使用して、ウェブ検索を実行します。",
     ) -> Any:
         """Search the web for the input."""
         agent = Agent(

@@ -153,11 +153,14 @@ class PickAgendaAction(BaseAgentAction):
         name: str,
         agent_dict: dict[str, AiAgent],
         fetch_comment_callback: Callable,
+        scene_transition_callback: Callable,
     ) -> None:
         super().__init__(name, agent_dict)
         self.loader = fetch_comment_callback
+        self.scene_transition_callback = scene_transition_callback
 
     def generate_prompt(self) -> str:
+        self.scene_transition_callback("conversation")
         comment = self.loader()
         assert isinstance(comment, str)
         prompt_prefix = (
@@ -195,6 +198,7 @@ class PrepareDebateAction(BaseMultiAgentAction):
         agent_dict: dict[str, AiAgent],
         create_agenda_callback: Callable,
         debate: Debate,
+        scene_transition_callback: Callable,
         mode: str = "WebSearch",
     ) -> None:
         super().__init__(name, agent_dict)
@@ -203,8 +207,10 @@ class PrepareDebateAction(BaseMultiAgentAction):
         self.agenda_list: list[str] = ["", ""]
         self.debate = debate
         self.mode = mode
+        self.scene_transition_callback = scene_transition_callback
 
     def start_new_debate(self) -> None:
+        self.scene_transition_callback("debate")
         self.agenda = self.loader()
         assert isinstance(self.agenda, str), "agendaはstr型である必要があります"
 

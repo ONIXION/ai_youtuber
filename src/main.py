@@ -8,7 +8,7 @@ from logging import Formatter, StreamHandler, getLogger
 from tkinter import simpledialog
 from typing import Callable
 
-from src.agent import TalkFormat, TalkInput
+from src.agent import TalkFormat
 from src.agent_controller import DualAgentController
 from src.connect_unity import WebSocketServer
 from src.test.dummy_youtube import DummyYouTubeLiveChat
@@ -99,6 +99,7 @@ class YoutubeLive:
             waiting_callback=self.waiting_callback,
             fetch_comment_callback=self.get_random_comment_callback,
             num_update_comment=num_update_comment,
+            scene_transition_callback=self.scene_transition_callback,
         )
 
     def __del__(self) -> None:
@@ -120,6 +121,8 @@ class YoutubeLive:
         subprocess.run(["taskkill", "/f", "/im", "BouyomiChan.exe"])
         subprocess.run(["taskkill", "/f", "/im", "AItuber.exe"])
         del self.agent_controller
+        del self.youtube
+        del self.unity_server
 
     def response_callback_creator(self, name: str) -> Callable[[str], None]:
         """Unityにメッセージを送信するためのコールバック関数を生成する
@@ -147,6 +150,20 @@ class YoutubeLive:
             )
 
         return send_unity_callback
+
+    def scene_transition_callback(self, scene: str) -> None:
+        """Unityにシーン遷移を通知する
+
+        Args:
+            scene (str): シーン名
+        """
+        self.unity_server.send_message_to_all(
+            name="system",
+            reply="",
+            action="",
+            emotion="",
+            scene=scene,
+        )
 
     def waiting_callback(self) -> bool:
         """Unityからの待機フラグを取得する
@@ -179,6 +196,22 @@ class YoutubeLive:
             if res is not None:
                 break
             asyncio.run(asyncio.sleep(1))
+
+        self.unity_server.send_message_to_all(
+            name="comment",
+            reply=res,
+            action="",
+            emotion="",
+            scene="",
+        )
+
+        self.unity_server.send_message_to_all(
+            name="message",
+            reply="",
+            action="",
+            emotion="",
+            scene="",
+        )
 
         assert isinstance(res, str)
         return res
