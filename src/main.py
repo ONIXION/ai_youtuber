@@ -198,14 +198,6 @@ class YoutubeLive:
             asyncio.run(asyncio.sleep(1))
 
         self.unity_server.send_message_to_all(
-            name="comment",
-            reply=res,
-            action="",
-            emotion="",
-            scene="",
-        )
-
-        self.unity_server.send_message_to_all(
             name="message",
             reply=res,
             action="",
