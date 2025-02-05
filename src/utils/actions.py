@@ -77,9 +77,12 @@ class BaseAgentAction(py_trees.behaviour.Behaviour, ABC):
             logger.debug(f"AgentAction: {agent_key} に対しての入力: {prompt}")
 
             agent_input = TalkInput(name="host", input=prompt).model_dump_json()
-            response = asyncio.get_event_loop().run_until_complete(
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            response = loop.run_until_complete(
                 agent.graph.ainvoke({"messages": [agent_input]})
             )
+            loop.close()
             message = TalkFormat.model_validate_json(
                 response["messages"][-1].content
             ).reply
@@ -108,12 +111,15 @@ class BaseMultiAgentAction(BaseAgentAction, ABC):
             agent2_input = TalkInput(name="host", input=prompt2).model_dump_json()
 
             # 全ての応答を得るまで待機
-            responses = asyncio.get_event_loop().run_until_complete(
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            responses = loop.run_until_complete(
                 asyncio.gather(
                     agent1.graph.ainvoke({"messages": [agent1_input]}),
                     agent2.graph.ainvoke({"messages": [agent2_input]}),
                 )
             )
+            loop.close()
             response1, response2 = responses
 
             message1 = TalkFormat.model_validate_json(

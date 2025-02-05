@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import shutil
 from logging import Formatter, StreamHandler, getLogger
 from typing import Annotated, Any, Literal
 
@@ -7,6 +8,7 @@ import chromadb
 import torch
 from browser_use import Agent, Browser, BrowserConfig, Controller
 from browser_use.browser.context import BrowserContext, BrowserContextConfig
+from chromadb.config import Settings
 from dotenv import load_dotenv
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.globals import set_debug, set_verbose
@@ -210,6 +212,16 @@ class AiAgent:
         self.graph = workflow.compile()
         logger.info("AItuber initialized.")
 
+    def __del__(self) -> None:
+        self.setting_vr.close()
+        self.memory_vr.close()
+        # chromaを削除
+        chromadb.delete_collection(f"ai-tuber-setting{self.name}")
+        chromadb.delete_collection(f"ai-tuber-memory{self.name}")
+        # ディレクトリを削除
+        shutil.rmtree(f"./chroma-db-setting{self.name}")
+        shutil.rmtree(f"./chroma-db-memory{self.name}")
+
     def _add_history(self, message: BaseMessage) -> None:
         if len(self.message_history) >= self.mh_limit:
             self.message_history.pop(0)
@@ -230,7 +242,9 @@ class AiAgent:
                 "device": "cuda",
             },
         )
-        client = chromadb.PersistentClient(path=path)
+        client = chromadb.PersistentClient(
+            path=path, settings=Settings(anonymized_telemetry=False)
+        )
         vector_store = Chroma(
             collection_name="ai-tuber", embedding_function=embeddings, client=client
         )

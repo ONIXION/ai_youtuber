@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 from logging import Formatter, StreamHandler, getLogger
@@ -171,6 +172,12 @@ class DualAgentController:
         del self.agent2
 
     def start_dialog(self) -> None:
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
         while True:
             self.root.tick_once()
             # PlayAgain ノードの結果によってループを継続するか決定

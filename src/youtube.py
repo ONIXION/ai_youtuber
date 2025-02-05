@@ -195,7 +195,11 @@ class YouTubeLiveChat:
                             # Unityにメッセージを送信
                             # print(f"Comment: {author}: {text}")
                             self.server.send_message_to_all(
-                                reply=text, action="Comment", emotion=author
+                                name="comment",
+                                reply=text,
+                                action=author,
+                                emotion=author,
+                                scene="",
                             )
                             # コールバック関数が指定されている場合は実行
                             if message_callback:

@@ -8,11 +8,16 @@ from logging import Formatter, StreamHandler, getLogger
 from tkinter import simpledialog
 from typing import Callable
 
+from dotenv import load_dotenv
+
 from src.agent import TalkFormat
 from src.agent_controller import DualAgentController
 from src.connect_unity import WebSocketServer
 from src.test.dummy_youtube import DummyYouTubeLiveChat
 from src.youtube import YouTubeLiveChat
+
+load_dotenv()
+
 
 # ログの設定
 logger = getLogger(__name__)
@@ -39,7 +44,8 @@ class YoutubeLive:
         assert mode in ["normal", "test"]
         # WebSocketサーバーを開始
         if mode == "normal":
-            self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT)
+            # self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT)
+            self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT, debug=True)
         if mode == "test":
             self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT, debug=True)
         self.unity_server.start()
@@ -108,8 +114,6 @@ class YoutubeLive:
 
     def start(self) -> None:
         """対話を開始する"""
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         self.agent_controller.start_dialog()
 
     def close(self) -> None:
@@ -192,11 +196,13 @@ class YoutubeLive:
 
     def get_random_comment_callback(self) -> str:
         while True:
-            res = self.youtube.get_random_comment()["text"]
-            if res is not None:
+            response = self.youtube.get_random_comment()
+            if response is not None:
                 break
-            asyncio.run(asyncio.sleep(1))
+            logger.info("コメントが取得できませんでした。再取得します...")
+            asyncio.run(asyncio.sleep(5))
 
+        res = response["text"]
         self.unity_server.send_message_to_all(
             name="message",
             reply=res,
