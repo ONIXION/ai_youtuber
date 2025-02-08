@@ -9,9 +9,11 @@ token.pickle
 __pycache__/
 *.pyc
 .mypy_cache/
+.pytest_cache/
+models/
 
 # Other
-chroma-db-memory/
-chroma-db-setting/
+chroma-db-memory*/
+chroma-db-setting*/
 client_secrets.json
 .vscode

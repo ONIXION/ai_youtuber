@@ -1,13 +1,26 @@
 import asyncio
 import json
+import subprocess
+import sys
 import threading
 from typing import Optional, Set
 
 from websockets.legacy.server import WebSocketServerProtocol, serve
 
 
+def start_server_log_receiver() -> subprocess.Popen:
+    """
+    サーバー用ログ受信用のターミナルを新規起動する。
+    cmd の /k オプションにより、スクリプト終了後もターミナルを維持します。
+    """
+    return subprocess.Popen(
+        ["cmd", "/k", sys.executable, "src/test/dummy_unity_client.py"],
+        creationflags=subprocess.CREATE_NEW_CONSOLE,
+    )
+
+
 class WebSocketServer:
-    def __init__(self, host: str = "localhost", port: int = 5000):
+    def __init__(self, host: str = "localhost", port: int = 5000, debug: bool = False):
         self.host = host
         self.port = port
         self.clients: Set[WebSocketServerProtocol] = set()
@@ -15,6 +28,12 @@ class WebSocketServer:
         self._server_thread: Optional[threading.Thread] = None
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self.unity_flag = False  # これがTrueの時だけコメントを抽選
+        self.debug = debug
+        self._dummy_client: subprocess.Popen | None = None
+
+    def __del__(self) -> None:
+        """デコンストラクタ"""
+        self.stop()
 
     async def _handle_client(
         self, websocket: WebSocketServerProtocol, path: str
@@ -53,9 +72,11 @@ class WebSocketServer:
                         error_message = json.dumps({"error": "Invalid JSON format"})
                         await self._send_message(
                             websocket,
+                            name="Server",
                             reply=error_message,
                             action="Error",
                             emotion="normal",
+                            scene="",
                         )
 
                 except asyncio.CancelledError:
@@ -78,6 +99,12 @@ class WebSocketServer:
 
     def start(self) -> None:
         """サーバーを別スレッドで開始"""
+        if self.debug:
+            print("Creating new dummy client for server log")
+            self._dummy_client = start_server_log_receiver()
+            # 待機
+            asyncio.run(asyncio.sleep(1))
+
         if self._server_thread is not None:
             print("Server is already running")
             return
@@ -123,8 +150,25 @@ class WebSocketServer:
         self._loop = None
         print("WebSocket server stopped")
 
+        # ダミークライアントのプロセスがあれば終了する
+        if self._dummy_client is not None:
+            try:
+                self._dummy_client.terminate()
+                self._dummy_client.wait(timeout=5)
+                print("Dummy client process terminated.")
+            except Exception as e:
+                print(f"Failed to terminate dummy client process: {e}")
+            finally:
+                self._dummy_client_process = None
+
     async def _send_message(
-        self, client: WebSocketServerProtocol, reply: str, action: str, emotion: str
+        self,
+        client: WebSocketServerProtocol,
+        name: str,
+        reply: str,
+        action: str,
+        emotion: str,
+        scene: str,
     ) -> None:
         """単一のクライアントにメッセージを送信"""
         if client is None or client.closed:
@@ -132,13 +176,24 @@ class WebSocketServer:
             self.clients.discard(client)
             return
         try:
-            message = json.dumps({"reply": reply, "action": action, "emotion": emotion})
+            message = json.dumps(
+                {
+                    "name": name,
+                    "reply": reply,
+                    "action": action,
+                    "emotion": emotion,
+                    "scene": scene,
+                }
+            )
             await client.send(message)
+
         except Exception as e:
             print(f"Failed to send message: {str(e)}")
             self.clients.discard(client)
 
-    def send_message_to_all(self, reply: str, action: str, emotion: str) -> None:
+    def send_message_to_all(
+        self, name: str, reply: str, action: str, emotion: str, scene: str
+    ) -> None:
         """全クライアントにメッセージを送信"""
         if self._loop is None or not self._loop.is_running():
             print("Server is not running")
@@ -152,7 +207,12 @@ class WebSocketServer:
                 await asyncio.gather(
                     *[
                         self._send_message(
-                            client, reply=reply, action=action, emotion=emotion
+                            client,
+                            name=name,
+                            reply=reply,
+                            action=action,
+                            emotion=emotion,
+                            scene=scene,
                         )
                         for client in self.clients
                     ]
@@ -175,7 +235,9 @@ if __name__ == "__main__":
             message = input("Enter message to send (or 'quit' to exit): ")
             if message.lower() == 'quit':
                 break
-            server.send_message_to_all(message, "Test", "normal")
+            server.send_message_to_all(
+                name="server", reply=message, action="Test", emotion="normal", scene=""
+            )
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:

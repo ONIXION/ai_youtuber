@@ -1,10 +1,15 @@
+import asyncio
 import logging
+import os
+import shutil
 from logging import Formatter, StreamHandler, getLogger
 from typing import Annotated, Any, Literal
 
 import chromadb
-from browser_use import Agent, Controller
-from browser_use.browser.browser import Browser, BrowserConfig
+import torch
+from browser_use import Agent, Browser, BrowserConfig, Controller
+from browser_use.browser.context import BrowserContext, BrowserContextConfig
+from chromadb.config import Settings
 from dotenv import load_dotenv
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.globals import set_debug, set_verbose
@@ -19,6 +24,7 @@ from langgraph.graph import END, START, MessagesState, StateGraph
 from pydantic import BaseModel, Field
 
 from src.prompt_define import assist_prompt_txt
+from src.utils.browser_util import get_devtools_url
 
 load_dotenv()
 
@@ -36,7 +42,7 @@ if __name__ == "__main__":
     stream_handler.setFormatter(handler_format)
     logger.addHandler(stream_handler)
 else:
-    logger = getLogger("__main__")
+    logger = getLogger("__main__").getChild(__name__)
     logger.setLevel(logging.WARNING)
 
 
@@ -67,27 +73,38 @@ class TalkFormat(BaseModel):
 
 
 # ThinkModelをtoolとして定義
-@tool
+@tool()
 async def think(input: Annotated[str, "what to think about"]) -> Any:
     """Think about the input."""
-    gemini_think = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash-thinking-exp-1219", temperature=0.7
-    )
-    # ThinkModelの設定
-    think_prompt = ChatPromptTemplate.from_messages(
-        [
-            SystemMessage(
-                content="""
-Think deeply about the input and generate an appropriate response.
-"""
-            ),
-            MessagesPlaceholder(variable_name="messages"),
-        ]
-    )
-    think_model = think_prompt | gemini_think
-    message = [HumanMessage(content="Input: " + input)]
-    response = await think_model.ainvoke({"messages": message})
-    return response.content
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            gemini_think = ChatGoogleGenerativeAI(
+                model="gemini-2.0-flash-thinking-exp-1219", temperature=0.7
+            )
+            # ThinkModelの設定
+            think_prompt = ChatPromptTemplate.from_messages(
+                [
+                    SystemMessage(
+                        content="""
+            Think deeply about the input and generate an appropriate response.
+            """
+                    ),
+                    MessagesPlaceholder(variable_name="messages"),
+                ]
+            )
+            think_model = think_prompt | gemini_think
+            message = [HumanMessage(content="Input: " + input)]
+
+            response = await think_model.ainvoke({"messages": message})
+            return response.content
+        except Exception as e:
+            logger.error(f"Error in think: {e}")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(2**attempt)
+                continue
+            else:
+                raise e
 
 
 # WebSearchModelをtoolとして定義
@@ -106,22 +123,53 @@ async def web_search(input: Annotated[str, "what to search for"]) -> Any:
     return result
 
 
-class AItuber:
-    def __init__(self, response_callback: TalkFormat | None = None) -> None:
-        # パラメータ設定
-        gemini_flash = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-exp", temperature=0.7
+def web_search_creater(browser_port: int) -> Any:
+    browser = Browser(config=BrowserConfig(cdp_url=get_devtools_url(browser_port)))
+    config = BrowserContextConfig(
+        browser_window_size={'width': 300, 'height': 400},
+    )
+    context = BrowserContext(browser=browser, config=config)
+
+    @tool()
+    async def _web_search(
+        input: str,
+    ) -> Any:
+        """Search the web for the input."""
+        logger.info(f"WebSearch: {input}")
+        agent = Agent(
+            task=input,
+            llm=ChatOpenAI(model='gpt-4o'),
+            controller=Controller(),
+            browser_context=context,
         )
-        tool_list = [think, web_search]
+        result = await agent.run()
+        return result
+
+    return _web_search
+
+
+class AiAgent:
+    def __init__(
+        self,
+        name: str,
+        system_prompt: str,
+        response_callback: TalkFormat | None = None,
+        tool_list: list = [],
+    ) -> None:
+        self.name = name
+        # パラメータ設定
+        # レートリミットが厳しかったので，gemini-1.5-flashを使用
+        gemini_flash = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
         self.message_history: BaseMessage = []
         self.mh_limit = 10  # 10なら対話5回分の履歴を保持
         self.session_id = "ai-tuber"
+
         # vector_retrieverの設定
         self.setting_vr = self._create_vector_retriever(
-            top_k=1, path="./chroma-db-setting"
+            top_k=1, path=f"./chroma-db-setting{self.name}"
         )
         self.memory_vr = self._create_vector_retriever(
-            top_k=3, path="./chroma-db-memory"
+            top_k=3, path=f"./chroma-db-memory{self.name}"
         )
 
         # コールバック関数
@@ -135,10 +183,11 @@ class AItuber:
         with open("./text_data/memory.txt", "r", encoding='utf-8') as f:
             memory_texts = f.read().splitlines()
             self._add_data_to_vr(self.memory_vr, memory_texts)
+
         # TalkModelの設定
         talk_prompt = ChatPromptTemplate.from_messages(
             [
-                SystemMessage(content=talk_prompt_txt),
+                SystemMessage(content=system_prompt),
                 MessagesPlaceholder(variable_name="history"),
                 MessagesPlaceholder(variable_name="message"),
             ]
@@ -166,6 +215,16 @@ class AItuber:
         self.graph = workflow.compile()
         logger.info("AItuber initialized.")
 
+    def __del__(self) -> None:
+        self.setting_vr.close()
+        self.memory_vr.close()
+        # chromaを削除
+        chromadb.delete_collection(f"ai-tuber-setting{self.name}")
+        chromadb.delete_collection(f"ai-tuber-memory{self.name}")
+        # ディレクトリを削除
+        shutil.rmtree(f"./chroma-db-setting{self.name}")
+        shutil.rmtree(f"./chroma-db-memory{self.name}")
+
     def _add_history(self, message: BaseMessage) -> None:
         if len(self.message_history) >= self.mh_limit:
             self.message_history.pop(0)
@@ -179,9 +238,16 @@ class AItuber:
         self, top_k: int = 5, path: str = "./chroma-db"
     ) -> Chroma:
         embeddings = HuggingFaceEmbeddings(
-            model_name="sbintuitions/sarashina-embedding-v1-1b"
+            model_name="sbintuitions/sarashina-embedding-v1-1b",
+            cache_folder="models",
+            model_kwargs={
+                "model_kwargs": {"torch_dtype": torch.float16},
+                "device": "cuda",
+            },
         )
-        client = chromadb.PersistentClient(path=path)
+        client = chromadb.PersistentClient(
+            path=path, settings=Settings(anonymized_telemetry=False)
+        )
         vector_store = Chroma(
             collection_name="ai-tuber", embedding_function=embeddings, client=client
         )
@@ -211,7 +277,7 @@ class AItuber:
         return END
         # return "manager"
 
-    def call_talk_model(self, state: MessagesState) -> dict:
+    async def call_talk_model(self, state: MessagesState) -> dict:
         last_msg = state['messages'][-1].content
         input = TalkInput.model_validate_json(last_msg)
         logger.info(f"{input.name}: {input.input}")
@@ -229,11 +295,26 @@ class AItuber:
             )
         ]
         input_message = {"message": message, "history": history}
-        response = self.talk_model.invoke(input_message)
+
+        max_retries = 3
+        response = None
+        for attempt in range(max_retries):
+            try:
+                response = self.talk_model.invoke(input_message)
+                break
+            except Exception as e:
+                logger.error(f"Error in talk: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2**attempt)
+                    continue
+                else:
+                    raise e
+
+        assert response is not None
         self._add_history(HumanMessage(content=f"{input.name}: {input.input}"))
-        self._add_history(AIMessage(content=f"雲霧星奈: {response.reply}"))
-        logger.info(f"雲霧星奈: {response.reply}")
-        save_data = f"{input.name}: {input.input} 雲霧星奈: {response.reply}\n"
+        self._add_history(AIMessage(content=f"{self.name}: {response.reply}"))
+        logger.info(f"{self.name}: {response.reply}")
+        save_data = f"{input.name}: {input.input} {self.name}: {response.reply}\n"
         self._add_data_to_vr(self.memory_vr, [save_data])
         with open("./text_data/memory.txt", "a", encoding="utf-8") as f:
             f.write(save_data)
