@@ -126,7 +126,7 @@ async def web_search(input: Annotated[str, "what to search for"]) -> Any:
 def web_search_creater(browser_port: int) -> Any:
     browser = Browser(config=BrowserConfig(cdp_url=get_devtools_url(browser_port)))
     config = BrowserContextConfig(
-        browser_window_size={'width': 300, 'height': 400},
+        browser_window_size={'width': 600, 'height': 825},
     )
     context = BrowserContext(browser=browser, config=config)
 
@@ -159,7 +159,8 @@ class AiAgent:
         self.name = name
         # パラメータ設定
         # レートリミットが厳しかったので，gemini-1.5-flashを使用
-        gemini_flash = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
+        # gemini_flash = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
+        gemini_flash = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.7)
         self.message_history: BaseMessage = []
         self.mh_limit = 10  # 10なら対話5回分の履歴を保持
         self.session_id = "ai-tuber"
@@ -176,11 +177,11 @@ class AiAgent:
         self.response_callback = response_callback
 
         # setting.txtのデータをvector_retrieverに追加
-        with open("./text_data/setting.txt", "r", encoding='utf-8') as f:
+        with open(f"./text_data/setting_{self.name}.txt", "r", encoding='utf-8') as f:
             setting_texts = f.read().splitlines()
             self._add_data_to_vr(self.setting_vr, setting_texts)
         # memory.txtのデータをvector_retrieverに追加
-        with open("./text_data/memory.txt", "r", encoding='utf-8') as f:
+        with open(f"./text_data/memory_{self.name}.txt", "r", encoding='utf-8') as f:
             memory_texts = f.read().splitlines()
             self._add_data_to_vr(self.memory_vr, memory_texts)
 
@@ -316,7 +317,7 @@ class AiAgent:
         logger.info(f"{self.name}: {response.reply}")
         save_data = f"{input.name}: {input.input} {self.name}: {response.reply}\n"
         self._add_data_to_vr(self.memory_vr, [save_data])
-        with open("./text_data/memory.txt", "a", encoding="utf-8") as f:
+        with open(f"./text_data/memory_{self.name}.txt", "a", encoding="utf-8") as f:
             f.write(save_data)
         response = response.model_dump_json()
 

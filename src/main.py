@@ -30,13 +30,15 @@ logger.addHandler(stream_handler)
 
 WEBSOCKET_SERVER_PORT = 5000
 AIvisSpeech_EXECUTABLE = (
-    r"C:\Users\kousei\AppData\Local\Programs\AivisSpeech\AivisSpeech.exe"
+    # r"C:\Users\kousei\AppData\Local\Programs\AivisSpeech\AivisSpeech.exe"
+    r"C:\Users\hirek\AppData\Local\Programs\AivisSpeech\AivisSpeech.exe"
 )
 BouyomiChan_EXECUTABLE = (
-    r"C:\Users\kousei\AppData\Local\BouyomiChan_0_1_11_0_Beta21\BouyomiChan.exe"
+    # r"C:\Users\kousei\AppData\Local\BouyomiChan_0_1_11_0_Beta21\BouyomiChan.exe"
+    r"E:\ソフト\BouyomiChan_0_1_11_0_Beta21\BouyomiChan.exe"
 )
-UnityApp_EXECUTABLE = r"C:\Users\kousei\AppDev\AItuber\Builds\AItuber.exe"
-
+# UnityApp_EXECUTABLE = r"C:\Users\kousei\AppDev\AItuber\Builds\AItuber.exe"
+UnityApp_EXECUTABLE = r"E:\SourceCode\UnityAPP\AItuber.exe"
 
 class YoutubeLive:
     def __init__(self, mode: str = "normal") -> None:
@@ -44,8 +46,8 @@ class YoutubeLive:
         assert mode in ["normal", "test"]
         # WebSocketサーバーを開始
         if mode == "normal":
-            # self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT)
-            self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT, debug=True)
+            self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT)
+            # self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT, debug=True)
         if mode == "test":
             self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT, debug=True)
         self.unity_server.start()
@@ -137,6 +139,11 @@ class YoutubeLive:
         Returns:
             Callable[[str], None]: Unityにメッセージを送信するためのコールバック関数
         """
+        send_name = None
+        if name == "雲霧星奈":
+            send_name = "agent1"
+        elif name == "星霧月音":
+            send_name = "agent2"
 
         def send_unity_callback(response: str) -> None:
             """Unityにメッセージを送信する
@@ -146,7 +153,7 @@ class YoutubeLive:
             """
             message = TalkFormat.model_validate_json(response)
             self.unity_server.send_message_to_all(
-                name=name,
+                name=send_name,
                 reply=message.reply,
                 action=message.action,
                 emotion=message.emotion,
@@ -162,7 +169,8 @@ class YoutubeLive:
             bool: 待機フラグ
         """
         res = self.unity_server.unity_flag
-
+        if res:
+            self.unity_server.unity_flag = False
         assert isinstance(res, bool)
         return res
 

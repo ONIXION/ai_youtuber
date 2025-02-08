@@ -179,7 +179,7 @@ class WebSocketServer:
             message = json.dumps(
                 {
                     "name": name,
-                    "reply": reply,
+                    "content": reply,
                     "action": action,
                     "emotion": emotion,
                     "scene": scene,

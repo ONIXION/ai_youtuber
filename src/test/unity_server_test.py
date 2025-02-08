@@ -4,7 +4,7 @@ from src.connect_unity import WebSocketServer
 
 if __name__ == "__main__":
     # サーバーのインスタンスを作成
-    server = WebSocketServer(port=5000, debug=True)
+    server = WebSocketServer(port=5000, debug=False)
     try:
         # サーバーを開始（別スレッドで実行）
         server.start()
