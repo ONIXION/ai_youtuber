@@ -31,6 +31,7 @@ class BaseAgentAction(py_trees.behaviour.Behaviour, ABC):
         self,
         name: str,
         agent_dict: dict[str, AiAgent],
+        send_message_callback: Callable | None = None,
     ) -> None:
         super(BaseAgentAction, self).__init__(name)
         self.agent_dict = agent_dict
@@ -42,6 +43,7 @@ class BaseAgentAction(py_trees.behaviour.Behaviour, ABC):
         self.blackboard.register_key(
             key="last_speaker", access=py_trees.common.Access.WRITE
         )
+        self.send_message_callback = send_message_callback
         logger.info(f"AgentAction: {name} を初期化しました")
 
     def allocate_agent(self) -> str:
@@ -159,16 +161,33 @@ class PickAgendaAction(BaseAgentAction):
         name: str,
         agent_dict: dict[str, AiAgent],
         fetch_comment_callback: Callable,
-        scene_transition_callback: Callable,
     ) -> None:
         super().__init__(name, agent_dict)
         self.loader = fetch_comment_callback
-        self.scene_transition_callback = scene_transition_callback
 
     def generate_prompt(self) -> str:
-        self.scene_transition_callback("conversation")
+        assert self.send_message_callback is not None
+        self.send_message_callback(
+            name="host",
+            reply="これからお二人には視聴者が気になるテーマについて話し合って頂きましょう。視聴者の皆さんはお二人に議論してほしい話題をコメントで送って下さい。",
+            action="",
+            emotion="",
+            scene="conversation",
+        )
+
+        # TODO: 待機時間を設定するべき？
+
         comment = self.loader()
         assert isinstance(comment, str)
+
+        self.send_message_callback(
+            name="host",
+            reply=f"今回の話題は以下の通りです: {comment}。お二人にはこの話題について話し合って頂きましょう。",
+            action="",
+            emotion="",
+            scene="",
+        )
+
         prompt_prefix = (
             "視聴者から以下の会話のアジェンダが送られてきました。これを読み上げた上で、アジェンダに対してあなたの意見を述べ、もう一方の出演者に対しても意見を促して下さい:\n",
             "アジェンダ：",
@@ -216,9 +235,33 @@ class PrepareDebateAction(BaseMultiAgentAction):
         self.scene_transition_callback = scene_transition_callback
 
     def start_new_debate(self) -> None:
-        self.scene_transition_callback("debate")
+        assert self.send_message_callback is not None
+        self.send_message_callback(
+            name="host",
+            reply="これからお二人には視聴者が気になる話題についてディベートを行って頂きましょう。視聴者の皆さんはお二人に議論してほしい話題をコメントで送って下さい。",
+            action="",
+            emotion="",
+            scene="debate",
+        )
+
         self.agenda = self.loader()
         assert isinstance(self.agenda, str), "agendaはstr型である必要があります"
+
+        self.send_message_callback(
+            name="host",
+            reply=f"今回のディベートのテーマは以下の通りです: {self.agenda}。お二人にはこのテーマについて賛成と反対に分かれてディベートして頂きます。",
+            action="",
+            emotion="",
+            scene="",
+        )
+
+        self.send_message_callback(
+            name="host",
+            reply="ディベートの勝敗は視聴者の皆さんによって決定されます。お二人の意見を聞いて、どちらが正しいと思うかコメントで教えて下さい。",
+            action="",
+            emotion="",
+            scene="",
+        )
 
         self.agenda_list[0] = f"{self.agenda}は正しい"
         self.agenda_list[1] = f"{self.agenda}は誤り"
@@ -295,7 +338,23 @@ class EndDebateAction(BaseMultiAgentAction):
         self.debate = debate
 
     def generate_prompt(self) -> list[str]:
+        assert self.send_message_callback is not None
+        self.send_message_callback(
+            name="host",
+            reply="ディベートが終了しました。結果を集計して発表します。",
+            action="",
+            emotion="",
+            scene="",
+        )
         winner = self.debate.judge_winner()
+
+        self.send_message_callback(
+            name="host",
+            reply=f"今回のディベートの勝者は{self.agent_dict[winner].name}です。おめでとうございます！",
+            action="",
+            emotion="",
+            scene="",
+        )
 
         prompt = (
             "ディベートが終了しました。結果を発表します。\n"

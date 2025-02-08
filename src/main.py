@@ -105,7 +105,7 @@ class YoutubeLive:
             waiting_callback=self.waiting_callback,
             fetch_comment_callback=self.get_random_comment_callback,
             num_update_comment=num_update_comment,
-            scene_transition_callback=self.scene_transition_callback,
+            send_message_callback=self.unity_server.send_message_to_all,
         )
 
     def __del__(self) -> None:
@@ -154,20 +154,6 @@ class YoutubeLive:
             )
 
         return send_unity_callback
-
-    def scene_transition_callback(self, scene: str) -> None:
-        """Unityにシーン遷移を通知する
-
-        Args:
-            scene (str): シーン名
-        """
-        self.unity_server.send_message_to_all(
-            name="system",
-            reply="",
-            action="",
-            emotion="",
-            scene=scene,
-        )
 
     def waiting_callback(self) -> bool:
         """Unityからの待機フラグを取得する

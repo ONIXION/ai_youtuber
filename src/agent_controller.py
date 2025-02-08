@@ -46,7 +46,7 @@ class DualAgentController:
         debate_agenda_callback: Callable,
         waiting_callback: Callable,
         fetch_comment_callback: Callable,
-        scene_transition_callback: Callable,
+        send_message_callback: Callable,
         num_update_comment: int,
     ) -> None:
         logger.info("==========init Agent==========")
@@ -103,7 +103,7 @@ class DualAgentController:
                     name="PickAgendaAction",
                     agent_dict=self.agent_dict,
                     fetch_comment_callback=conversation_agenda_callback,
-                    scene_transition_callback=scene_transition_callback,
+                    send_message_callback=send_message_callback,
                 ),
                 WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
                 ConversationAction(
@@ -123,7 +123,7 @@ class DualAgentController:
                     agent_dict=self.agent_dict,
                     create_agenda_callback=debate_agenda_callback,
                     debate=self.debate,
-                    scene_transition_callback=scene_transition_callback,
+                    send_message_callback=send_message_callback,
                     mode="WebSearch",
                 ),
                 WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
