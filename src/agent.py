@@ -157,8 +157,6 @@ class AiAgent:
     ) -> None:
         self.name = name
         # パラメータ設定
-        # レートリミットが厳しかったので，gemini-1.5-flashを使用
-        # gemini_flash = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
         gemini_flash = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash-exp", temperature=0.7
         )
@@ -342,7 +340,6 @@ class AiAgent:
 
         max_retries = 3
         response = None
-
         for attempt in range(max_retries):
             try:
                 response = await self.assist_model.ainvoke(input)

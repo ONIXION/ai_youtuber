@@ -18,3 +18,5 @@ chroma-db-setting*/
 client_secrets.json
 .vscode
 temp/
+server.crt
+server.key

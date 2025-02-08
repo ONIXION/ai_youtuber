@@ -23,7 +23,9 @@ def start_server_log_receiver() -> subprocess.Popen:
 
 
 class WebSocketServer:
-    def __init__(self, host: str = "localhost", port: int = 5000, debug: bool = False):
+    def __init__(self, host: str = "0.0.0.0", port: int = 5000, debug: bool = False):
+        # Unity側では以下のように設定する
+        # Uri serverUri = new Uri("ws://34.133.108.164:5000");
         self.host = host
         self.port = port
         self.clients: Set[WebSocketServerProtocol] = set()

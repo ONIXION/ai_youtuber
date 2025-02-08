@@ -8,6 +8,7 @@ dependencies = [
     "aiohappyeyeballs>=2.4.4",
     "aiohttp>=3.11.11",
     "browser-use>=0.1.19",
+    "cryptography>=44.0.0",
     "google-auth-oauthlib>=1.2.1",
     "hdbscan>=0.8.40",
     "japanize-matplotlib>=1.1.3",
