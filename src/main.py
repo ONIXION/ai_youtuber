@@ -29,16 +29,6 @@ stream_handler.setFormatter(handler_format)
 logger.addHandler(stream_handler)
 
 WEBSOCKET_SERVER_PORT = 5000
-AIvisSpeech_EXECUTABLE = (
-    # r"C:\Users\kousei\AppData\Local\Programs\AivisSpeech\AivisSpeech.exe"
-    r"C:\Users\hirek\AppData\Local\Programs\AivisSpeech\AivisSpeech.exe"
-)
-BouyomiChan_EXECUTABLE = (
-    # r"C:\Users\kousei\AppData\Local\BouyomiChan_0_1_11_0_Beta21\BouyomiChan.exe"
-    r"E:\ソフト\BouyomiChan_0_1_11_0_Beta21\BouyomiChan.exe"
-)
-# UnityApp_EXECUTABLE = r"C:\Users\kousei\AppDev\AItuber\Builds\AItuber.exe"
-UnityApp_EXECUTABLE = r"E:\SourceCode\UnityAPP\AItuber.exe"
 
 
 class YoutubeLive:
@@ -73,26 +63,6 @@ class YoutubeLive:
 
         elif mode == "test":
             self.youtube = DummyYouTubeLiveChat()
-
-        # 必要なsubprocessを開始
-        if not mode == "test":
-            subprocess.Popen(
-                [AIvisSpeech_EXECUTABLE],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            subprocess.Popen(
-                [BouyomiChan_EXECUTABLE],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            subprocess.Popen(
-                [UnityApp_EXECUTABLE],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            # 5秒待機
-            asyncio.run(asyncio.sleep(5))
 
         # agent_controllerの初期化
         name_list = ["雲霧星奈", "星霧月音"]
