@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import shutil
 from logging import Formatter, StreamHandler, getLogger
 from typing import Annotated, Any, Literal
@@ -162,9 +163,6 @@ class AiAgent:
         self.message_history: BaseMessage = []
         self.mh_limit = 10  # 10なら対話5回分の履歴を保持
         self.session_id = "ai-tuber"
-        db_exist_flg = (
-            chromadb.get_collection(f"ai-tuber-setting{self.name}") is not None
-        ) and (chromadb.get_collection(f"ai-tuber-memory{self.name}") is not None)
 
         # vector_retrieverの設定
         self.setting_vr = self._create_vector_retriever(
@@ -177,15 +175,14 @@ class AiAgent:
         # コールバック関数
         self.response_callback = response_callback
 
-        if not db_exist_flg:
-            # setting.txtのデータをvector_retrieverに追加
-            with open("./text_data/setting.txt", "r", encoding='utf-8') as f:
-                setting_texts = f.read().splitlines()
-                self._add_data_to_vr(self.setting_vr, setting_texts)
-            # memory.txtのデータをvector_retrieverに追加
-            with open("./text_data/memory.txt", "r", encoding='utf-8') as f:
-                memory_texts = f.read().splitlines()
-                self._add_data_to_vr(self.memory_vr, memory_texts)
+        # setting.txtのデータをvector_retrieverに追加
+        with open("./text_data/setting.txt", "r", encoding='utf-8') as f:
+            setting_texts = f.read().splitlines()
+            self._add_data_to_vr(self.setting_vr, setting_texts)
+        # memory.txtのデータをvector_retrieverに追加
+        with open("./text_data/memory.txt", "r", encoding='utf-8') as f:
+            memory_texts = f.read().splitlines()
+            self._add_data_to_vr(self.memory_vr, memory_texts)
 
         # TalkModelの設定
         talk_prompt = ChatPromptTemplate.from_messages(

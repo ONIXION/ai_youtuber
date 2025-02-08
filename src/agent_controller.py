@@ -155,6 +155,7 @@ class DualAgentController:
                     name="EndDebateAction",
                     agent_dict=self.agent_dict,
                     debate=self.debate,
+                    send_message_callback=send_message_callback,
                 ),
                 WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
                 PlayAgainAction(name="PlayAgainAction"),

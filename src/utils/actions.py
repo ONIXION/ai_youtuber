@@ -161,8 +161,9 @@ class PickAgendaAction(BaseAgentAction):
         name: str,
         agent_dict: dict[str, AiAgent],
         fetch_comment_callback: Callable,
+        send_message_callback: Callable,
     ) -> None:
-        super().__init__(name, agent_dict)
+        super().__init__(name, agent_dict, send_message_callback)
         self.loader = fetch_comment_callback
 
     def generate_prompt(self) -> str:
@@ -223,16 +224,15 @@ class PrepareDebateAction(BaseMultiAgentAction):
         agent_dict: dict[str, AiAgent],
         create_agenda_callback: Callable,
         debate: Debate,
-        scene_transition_callback: Callable,
+        send_message_callback: Callable,
         mode: str = "WebSearch",
     ) -> None:
-        super().__init__(name, agent_dict)
+        super().__init__(name, agent_dict, send_message_callback)
         self.loader = create_agenda_callback
         self.agenda: str = ""
         self.agenda_list: list[str] = ["", ""]
         self.debate = debate
         self.mode = mode
-        self.scene_transition_callback = scene_transition_callback
 
     def start_new_debate(self) -> None:
         assert self.send_message_callback is not None
@@ -333,8 +333,9 @@ class EndDebateAction(BaseMultiAgentAction):
         name: str,
         agent_dict: dict[str, AiAgent],
         debate: Debate,
+        send_message_callback: Callable,
     ) -> None:
-        super().__init__(name, agent_dict)
+        super().__init__(name, agent_dict, send_message_callback)
         self.debate = debate
 
     def generate_prompt(self) -> list[str]:
