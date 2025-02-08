@@ -79,7 +79,9 @@ class YouTubeLiveChat:
                 # client_secrets.jsonが必要
                 flow = InstalledAppFlow.from_client_secrets_file(
                     'client_secrets.json',
-                    scopes=['https://www.googleapis.com/auth/youtube.force-ssl'],
+                    scopes=[
+                        'https://www.googleapis.com/auth/youtube.force-ssl',
+                    ],
                 )
                 credentials = flow.run_local_server(port=8080)
             # トークンを保存

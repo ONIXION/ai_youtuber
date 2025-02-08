@@ -2,10 +2,7 @@
 
 import asyncio
 import logging
-import subprocess
-import tkinter as tk
 from logging import Formatter, StreamHandler, getLogger
-from tkinter import simpledialog
 from typing import Callable
 
 from dotenv import load_dotenv
@@ -38,7 +35,6 @@ class YoutubeLive:
         # WebSocketサーバーを開始
         if mode == "normal":
             self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT)
-            # self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT, debug=True)
         if mode == "test":
             self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT, debug=True)
         self.unity_server.start()
@@ -69,13 +65,23 @@ class YoutubeLive:
         port_list = [9222, 9223]
         num_update_comment = 1  # ディベートの際に各ターンで取得するコメント数
 
+        if mode == "test":
+
+            def dummy_waiting_callback() -> bool:
+                return True
+
+            _waiting_callback = dummy_waiting_callback
+
+        else:
+            _waiting_callback = self.waiting_callback
+
         self.agent_controller = DualAgentController(
             name_list=name_list,
             port_list=port_list,
             response_callback_creater=self.response_callback_creator,
             conversation_agenda_callback=self.get_random_comment_callback,
             debate_agenda_callback=self.get_random_comment_callback,
-            waiting_callback=self.waiting_callback,
+            waiting_callback=_waiting_callback,
             fetch_comment_callback=self.get_random_comment_callback,
             num_update_comment=num_update_comment,
             send_message_callback=self.unity_server.send_message_to_all,
@@ -94,9 +100,6 @@ class YoutubeLive:
         logger.info("YoutubeLiveを終了します")
         self.unity_server.stop()
         self.youtube.stop_monitoring()
-        subprocess.run(["taskkill", "/f", "/im", "AivisSpeech.exe"])
-        subprocess.run(["taskkill", "/f", "/im", "BouyomiChan.exe"])
-        subprocess.run(["taskkill", "/f", "/im", "AItuber.exe"])
         del self.agent_controller
         del self.youtube
         del self.unity_server
@@ -151,11 +154,7 @@ class YoutubeLive:
         Returns:
             str: YouTube Live配信のURL
         """
-        root = tk.Tk()
-        root.withdraw()  # Hide the main window
-        url = simpledialog.askstring(
-            "Input", "YouTube Live配信のURLを入力してください:"
-        )
+        url = input("YouTube LiveのURLを入力してください: ")
         assert isinstance(url, str)
         return url
 

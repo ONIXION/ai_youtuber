@@ -72,8 +72,8 @@ class DualAgentController:
         # portB = 9223
         self.port_list = port_list
 
-        self.procA = start_chrome(self.port_list[0], "C:/temp/chrome_profile_A")
-        self.procB = start_chrome(self.port_list[1], "C:/temp/chrome_profile_B")
+        self.procA = start_chrome(self.port_list[0], "temp/chrome_profile_A")
+        self.procB = start_chrome(self.port_list[1], "temp/chrome_profile_B")
 
         self.agent1 = AiAgent(
             # "雲霧星奈",

@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 import shutil
 from logging import Formatter, StreamHandler, getLogger
 from typing import Annotated, Any, Literal
@@ -50,7 +49,7 @@ def create_browser() -> Browser:
     return Browser(
         config=BrowserConfig(
             headless=False,
-            chrome_instance_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            chrome_instance_path="/usr/bin/google-chrome",
         )
     )
 
@@ -160,7 +159,9 @@ class AiAgent:
         # パラメータ設定
         # レートリミットが厳しかったので，gemini-1.5-flashを使用
         # gemini_flash = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
-        gemini_flash = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.7)
+        gemini_flash = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash-exp", temperature=0.7
+        )
         self.message_history: BaseMessage = []
         self.mh_limit = 10  # 10なら対話5回分の履歴を保持
         self.session_id = "ai-tuber"
@@ -338,7 +339,23 @@ class AiAgent:
                 )
             ]
         }
-        response = await self.assist_model.ainvoke(input)
+
+        max_retries = 3
+        response = None
+
+        for attempt in range(max_retries):
+            try:
+                response = await self.assist_model.ainvoke(input)
+                break
+            except Exception as e:
+                logger.error(f"Error in assist: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2**attempt)
+                    continue
+                else:
+                    raise e
+
+        assert response is not None
         talk_input = TalkInput(
             name=last_message.action, input=response["output"]
         ).model_dump_json()

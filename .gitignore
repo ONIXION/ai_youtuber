@@ -17,3 +17,4 @@ chroma-db-memory*/
 chroma-db-setting*/
 client_secrets.json
 .vscode
+temp/

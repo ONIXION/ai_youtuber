@@ -14,8 +14,11 @@ def start_server_log_receiver() -> subprocess.Popen:
     cmd の /k オプションにより、スクリプト終了後もターミナルを維持します。
     """
     return subprocess.Popen(
-        ["cmd", "/k", sys.executable, "src/test/dummy_unity_client.py"],
-        creationflags=subprocess.CREATE_NEW_CONSOLE,
+        [sys.executable, "src/test/dummy_unity_client.py"],
+        start_new_session=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL,
     )
 
 
