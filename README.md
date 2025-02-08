@@ -28,14 +28,13 @@ Assist Modelの指示により，より深い思考を行い，その結果を�
 ## セットアップ
 - リポジトリのダウンロード
 ```
-git clone https://github.com/ONIXION/ai_youtuber.git -b delete_manager
+git clone https://github.com/ONIXION/ai_youtuber.git
 cd ai_youtuber
 ```
 - Python環境の構築
 ```
-conda create -n ai_tuber python=3.12
-conda activate ai_tuber
-pip install -r requirements.txt
+uv sync
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
 ```
 - 環境変数の準備\
 `.env`ファイルを作成し，ルート（`ai_youtuber/`）に配置\
