@@ -40,6 +40,7 @@ BouyomiChan_EXECUTABLE = (
 # UnityApp_EXECUTABLE = r"C:\Users\kousei\AppDev\AItuber\Builds\AItuber.exe"
 UnityApp_EXECUTABLE = r"E:\SourceCode\UnityAPP\AItuber.exe"
 
+
 class YoutubeLive:
     def __init__(self, mode: str = "normal") -> None:
         """必要なプロセスを起動し、Liveの準備を行う"""
