@@ -134,17 +134,16 @@ class YoutubeLive:
                 agent1_input = TalkInput(name=name, input=comment).model_dump_json()
                 agent1_response = await self.agent_controller.agent1.graph.ainvoke({"messages": [agent1_input]})
                 agent1_reply = TalkFormat.model_validate_json(agent1_response["messages"][-1].content)
-                while True:
-                    if self.waiting_callback():
-                        break
+                # while True:
+                #     if self.waiting_callback():
+                #         break
                 # agent2にコメントとagent1の応答を入力
-                agent2_input = TalkInput(name=name, input=f"{comment}\n雲霧星奈: {agent1_reply.reply}").model_dump_json()
+                agent2_input = TalkInput(name=name, input=f"{comment}\n 雲霧星奈: {agent1_reply.reply}").model_dump_json()
                 await self.agent_controller.agent2.graph.ainvoke({"messages": [agent2_input]})
                 # agent2_reply = TalkFormat.model_validate_json(agent2_response["messages"][-1].content)
-                while True:
-                    if self.waiting_callback():
-                        break
-    
+                while not self.waiting_callback():
+                    time.sleep(0.5)
+
     def start_debate(self) -> None:
         self.agent_controller.start_dialog()
 
