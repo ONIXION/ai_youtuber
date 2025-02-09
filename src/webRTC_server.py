@@ -7,14 +7,20 @@ WebRTCを使用したブラウザ画面共有サーバー
 
 import asyncio
 import json
-import os
+import logging
 import ssl
+import subprocess
+import time
 import uuid
 from fractions import Fraction
+from logging import Formatter, StreamHandler, getLogger
+from typing import Any
 
 import av
 import mss
 import numpy as np
+import requests  # type: ignore
+import websocket
 from aiohttp import web
 from aiortc import (
     MediaStreamTrack,
@@ -23,75 +29,193 @@ from aiortc import (
     RTCSessionDescription,
 )
 from browser_use import Agent, Controller
-from browser_use.browser.browser import Browser, BrowserConfig, BrowserContextConfig
+from browser_use.browser.browser import Browser, BrowserConfig
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 
 # Load environment variables
 load_dotenv()
 
+# ログの設定
+if __name__ == "__main__":
+    logger = getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    handler_format = Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    stream_handler = StreamHandler()
+    stream_handler.setLevel(logging.DEBUG)
+    stream_handler.setFormatter(handler_format)
+    logger.addHandler(stream_handler)
+else:
+    logger = getLogger("__main__").getChild(__name__)
+    logger.setLevel(logging.WARNING)
+
 
 class BrowserController:
     """ブラウザの制御を管理するクラス"""
 
-    def __init__(self):
-        self.browser = None
+    def __init__(self, port_list: list) -> None:
+        self.browser_list: list = []
+        self.port_list = port_list
 
-    def create_browser(self) -> Browser:
-        """ブラウザインスタンスを作成する"""
-        return Browser(
-            config=BrowserConfig(
-                headless=False,
-                chrome_instance_path="/usr/bin/google-chrome",
-                # new_context_config=BrowserContextConfig(
-                #     browser_window_size=lambda: {"width": 1280, "height": 720},  # Set explicit window size
-                # )
-            )
-        )
+    def start_chrome(self) -> list[subprocess.Popen]:
+        """Chromeを起動する"""
+        return [
+            self._start_chrome(port, f"temp/chrome-{port}") for port in self.port_list
+        ]
 
-    async def set_window_position_and_size(
-        self, x: int, y: int, width: int, height: int
-    ):
-        """Chromeウィンドウの位置とサイズを設定する
-
-        Args:
-            x: ウィンドウのX座標
-            y: ウィンドウのY座標
-            width: ウィンドウの幅
-            height: ウィンドウの高さ
+    def _start_chrome(self, port: int, user_data_dir: str) -> subprocess.Popen:
         """
-        window_ids = (
-            os.popen("xdotool search --onlyvisible --name 'Chrome'")
-            .read()
-            .strip()
-            .split('\n')
-        )
-        if not window_ids:
-            return False
+        指定ポートのDevTools Protocolを開放してChromeを起動。
+        Xvfbを用いて仮想ディスプレイ上でChromeを起動します。
+        ユーザーデータディレクトリも個別に指定するとセッションが干渉しにくくなります。
+        """
+        cmd = [
+            # "xvfb-run",
+            # "--auto-servernum",
+            "/usr/bin/google-chrome",
+            f"--remote-debugging-port={port}",
+            f"--remote-allow-origins=http://127.0.0.1:{port}",
+            f"--user-data-dir={user_data_dir}",
+            "--disable-background-networking",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "https://example.com",
+        ]
+        return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        window_id = window_ids[-1]
-        os.system(f'xdotool windowsize {window_id} {width} {height}')
-        os.system(f'xdotool windowmove {window_id} {x} {y}')
-        return True
+    def _get_target_info(self, port: int) -> list[dict]:
+        """CDPエンドポイントから全ターゲット情報を取得し、最初のものを返す"""
+        resp = requests.get(f"http://127.0.0.1:{port}/json")
+        targets = resp.json()
+        if not targets:
+            raise Exception("No targets found")
 
-    async def start_browser(self):
+        assert isinstance(targets, list)
+        return targets
+
+    def _get_window_id(self, port: int, target_id: str) -> Any:
+        """指定target_idに対してBrowser.getWindowForTargetを実行し、windowIdを返す"""
+        # まず、対象のwebSocketDebuggerUrlを取得
+        resp = requests.get(f"http://127.0.0.1:{port}/json")
+        targets = resp.json()
+        ws_url = None
+        for target in targets:
+            if target.get("id") == target_id:
+                ws_url = target.get("webSocketDebuggerUrl")
+                break
+        if ws_url is None:
+            raise Exception("Target not found for given port and target_id")
+
+        # WebSocket接続を確立
+        ws = websocket.create_connection(ws_url)
+        message_id = 1
+        command = {
+            'id': message_id,
+            'method': 'Browser.getWindowForTarget',
+            'params': {},
+        }
+        ws.send(json.dumps(command))
+        result = json.loads(ws.recv())
+        ws.close()
+        if "result" in result:
+            return result["result"]["windowId"]
+        else:
+            raise Exception("Failed to get window ID")
+
+    def get_unique_window_ids(self, port: int) -> list[int]:
+        """
+        指定されたポート内のCDPエンドポイントから全ターゲット情報を取得し、
+        各ターゲットに対して Browser.getWindowForTarget を実行してウィンドウIDを取得します。
+        重複するIDは含めず、ユニークなウィンドウIDのリストを返します。
+        """
+        unique_ids = set()
+        window_ids = []
+        try:
+            targets = self._get_target_info(port)
+        except Exception as e:
+            print(f"ポート {port} からターゲット情報を取得できませんでした: {e}")
+
+        for target in targets:
+            target_id = target.get("id")
+            if not target_id:
+                continue
+            try:
+                wid = self._get_window_id(port, target_id)
+                if wid not in unique_ids:
+                    unique_ids.add(wid)
+                    window_ids.append(wid)
+            except Exception as e:
+                print(
+                    f"ポート {port} の対象 (target_id: {target_id}) からウィンドウIDを取得できませんでした: {e}"
+                )
+        return window_ids
+
+    def set_window_bounds(
+        self, port: int, window_id: int, x: int, y: int, width: int, height: int
+    ) -> Any:
+        """CDP経由でウィンドウの位置・サイズを設定"""
+        # まず、任意のターゲットのWebSocket URLを取得
+        target = self._get_target_info(port)[0]
+        ws_url = target["webSocketDebuggerUrl"]
+        ws = websocket.create_connection(ws_url)
+        message_id = 1
+        bounds = {
+            "left": x,
+            "top": y,
+            "width": width,
+            "height": height,
+            "windowState": "normal",
+        }
+        command = {
+            "id": message_id,
+            "method": "Browser.setWindowBounds",
+            "params": {"windowId": window_id, "bounds": bounds},
+        }
+        ws.send(json.dumps(command))
+        result = json.loads(ws.recv())
+        ws.close()
+        return result
+
+    async def start_browser(self, port: int) -> None:
         """ブラウザを起動し、初期設定を行う"""
-        self.browser = self.create_browser()
+        # browser configを渡す方法では新しいウィンドウが開かれてしまうが、直接browserを渡すことで、既存のウィンドウを利用できる
+        browser = Browser(config=BrowserConfig(cdp_url=self.get_devtools_url(port)))
         model = ChatOpenAI(model='gpt-4o')
         agent = Agent(
-            task="Navigate to about:blank",
+            task="蜜柑は英語で何という？",
             llm=model,
             controller=Controller(),
-            browser=self.browser,
+            browser=browser,
         )
         await agent.run()
         await asyncio.sleep(1)
-        return await self.set_window_position_and_size(0, 0, 1280, 825)
+        self.browser_list.append(browser)
 
-    def cleanup(self):
+    def get_devtools_url(self, port: int) -> str:
+        """
+        DevTools ProtocolのWebSocketエンドポイント(例: ws://127.0.0.1:<port>/devtools/browser/<id>)を取得。
+        """
+        max_retries = 10
+        delay = 1  # 秒
+
+        for attempt in range(max_retries):
+            try:
+                resp = requests.get(f"http://127.0.0.1:{port}/json/version")
+                info = resp.json()
+                url = info["webSocketDebuggerUrl"]  # DevTools Protocol用WebSocket URL
+                assert isinstance(url, str)
+                return url
+            except requests.RequestException:
+                pass
+            time.sleep(delay)
+
+        raise Exception("Failed to get DevTools Protocol URL.")
+
+    def cleanup(self) -> None:
         """Clean up browser resources."""
-        if self.browser:
-            self.browser.quit()
+        if self.browser_list:
+            for browser in self.browser_list:
+                browser.quit()
 
 
 class ScreenCaptureTrack(MediaStreamTrack):
@@ -159,7 +283,7 @@ class webRTCServer:
         async def on_connectionstatechange() -> None:
             if pc.connectionState == "failed":
                 await pc.close()
-                self.pcs.discard(pc)
+                self.pcs.discard(pc)  # type: ignore
 
         # ICE接続状態の監視
         @pc.on("iceconnectionstatechange")
@@ -168,7 +292,7 @@ class webRTCServer:
 
         # Add screen capture track with optimized settings
         video = ScreenCaptureTrack()
-        sender = pc.addTrack(video)
+        pc.addTrack(video)
 
         await pc.setRemoteDescription(offer)
         answer = await pc.createAnswer()
@@ -270,10 +394,38 @@ class webRTCServer:
         app.router.add_post("/candidate", self.handle_candidate)
 
         # ブラウザコントローラーの初期化と起動
-        browser_controller = BrowserController()
+        browser_controller: BrowserController = BrowserController([9222, 9223])
         app['browser_controller'] = browser_controller
-        if not await browser_controller.start_browser():
-            return
+
+        # ブラウザの起動
+        browser_controller.start_chrome()
+
+        # このディレイは必要
+        time.sleep(3)
+
+        # ウィンドウの位置とサイズを設定
+        ids = browser_controller.get_unique_window_ids(9222)
+        if len(ids) > 1:
+            logger.warning(
+                "複数のウィンドウIDが取得されました。最初のウィンドウのみを設定します。"
+            )
+
+        id = ids[0]
+        browser_controller.set_window_bounds(9222, id, 0, 0, 600, 600)
+
+        ids = browser_controller.get_unique_window_ids(9223)
+        if len(ids) > 1:
+            logger.warning(
+                "複数のウィンドウIDが取得されました。最初のウィンドウのみを設定します。"
+            )
+
+        id = ids[0]
+        browser_controller.set_window_bounds(9223, id, 680, 0, 600, 600)
+
+        await asyncio.gather(
+            browser_controller.start_browser(9222),
+            browser_controller.start_browser(9223),
+        )
 
         # サーバーの起動
         runner = web.AppRunner(app)
@@ -292,6 +444,11 @@ class webRTCServer:
         try:
             loop.run_until_complete(self._start())
         finally:
+            pending = asyncio.all_tasks(loop)
+            for task in pending:
+                task.cancel()
+            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            loop.run_until_complete(loop.shutdown_asyncgens())
             loop.close()
 
 

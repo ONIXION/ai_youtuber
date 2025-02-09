@@ -1,3 +1,4 @@
+import os
 import subprocess
 import time
 
@@ -48,6 +49,34 @@ def get_devtools_url(port: int) -> str:
         time.sleep(delay)
 
     raise Exception("Failed to get DevTools Protocol URL.")
+
+
+def set_window_position_and_size(
+    x: int, y: int, width: int, height: int, idx: int = -1
+) -> bool:
+    """Chromeウィンドウの位置とサイズを設定する
+
+    Args:
+        x: ウィンドウのX座標
+        y: ウィンドウのY座標
+        width: ウィンドウの幅
+        height: ウィンドウの高さ
+    """
+    window_ids = (
+        os.popen("xdotool search --onlyvisible --name 'Chrome'")
+        .read()
+        .strip()
+        .split('\n')
+    )
+    if not window_ids:
+        return False
+
+    print(f"window_ids{window_ids}")
+
+    window_id = window_ids[idx]
+    os.system(f'xdotool windowsize {window_id} {width} {height}')
+    os.system(f'xdotool windowmove {window_id} {x} {y}')
+    return True
 
 
 if __name__ == "__main__":
