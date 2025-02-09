@@ -10,6 +10,7 @@ import json
 import logging
 import ssl
 import subprocess
+import threading
 import time
 import uuid
 from fractions import Fraction
@@ -29,7 +30,12 @@ from aiortc import (
     RTCSessionDescription,
 )
 from browser_use import Agent, Controller
-from browser_use.browser.browser import Browser, BrowserConfig
+from browser_use.browser.browser import (
+    Browser,
+    BrowserConfig,
+    BrowserContext,
+    BrowserContextConfig,
+)
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 
@@ -176,22 +182,8 @@ class BrowserController:
         ws.close()
         return result
 
-    async def start_browser(self, port: int) -> None:
-        """ブラウザを起動し、初期設定を行う"""
-        # browser configを渡す方法では新しいウィンドウが開かれてしまうが、直接browserを渡すことで、既存のウィンドウを利用できる
-        browser = Browser(config=BrowserConfig(cdp_url=self.get_devtools_url(port)))
-        model = ChatOpenAI(model='gpt-4o')
-        agent = Agent(
-            task="蜜柑は英語で何という？",
-            llm=model,
-            controller=Controller(),
-            browser=browser,
-        )
-        await agent.run()
-        await asyncio.sleep(1)
-        self.browser_list.append(browser)
-
-    def get_devtools_url(self, port: int) -> str:
+    @staticmethod
+    def get_devtools_url(port: int) -> str:
         """
         DevTools ProtocolのWebSocketエンドポイント(例: ws://127.0.0.1:<port>/devtools/browser/<id>)を取得。
         """
@@ -268,6 +260,7 @@ class ScreenCaptureTrack(MediaStreamTrack):
 class webRTCServer:
     def __init__(self) -> None:
         self.pcs: dict = {}
+        self.browser_controller: BrowserController | None = None
 
     async def offer(self, request: web.Request) -> web.Response:
         params = await request.json()
@@ -382,6 +375,24 @@ class webRTCServer:
         if hasattr(app, 'browser_controller'):
             app['browser_controller'].cleanup()
 
+    def set_window_bounds(self) -> None:
+        assert self.browser_controller is not None
+        window_list = self.browser_controller.get_unique_window_ids(9222)
+        for window_id in window_list:
+            self.browser_controller.set_window_bounds(9222, window_id, 0, 0, 600, 600)
+        window_list = self.browser_controller.get_unique_window_ids(9223)
+        for window_id in window_list:
+            self.browser_controller.set_window_bounds(9223, window_id, 600, 0, 600, 600)
+
+    async def periodic_set_window_bounds(self, interval: int = 10) -> None:
+        """定期的に set_window_bounds を実行するタスク（interval秒ごと）"""
+        while True:
+            try:
+                self.set_window_bounds()
+            except Exception as e:
+                print(f"ウィンドウ境界サイズ更新エラー: {e}")
+            await asyncio.sleep(interval)
+
     async def _start(self) -> None:
         """WebRTCサーバーのメインエントリーポイント"""
         ssl_context = ssl.SSLContext()
@@ -394,38 +405,20 @@ class webRTCServer:
         app.router.add_post("/candidate", self.handle_candidate)
 
         # ブラウザコントローラーの初期化と起動
-        browser_controller: BrowserController = BrowserController([9222, 9223])
-        app['browser_controller'] = browser_controller
+        self.browser_controller = BrowserController([9222, 9223])
+        app['browser_controller'] = self.browser_controller
 
         # ブラウザの起動
-        browser_controller.start_chrome()
+        self.browser_controller.start_chrome()
 
         # このディレイは必要
-        time.sleep(3)
+        await asyncio.sleep(5)
 
-        # ウィンドウの位置とサイズを設定
-        ids = browser_controller.get_unique_window_ids(9222)
-        if len(ids) > 1:
-            logger.warning(
-                "複数のウィンドウIDが取得されました。最初のウィンドウのみを設定します。"
-            )
+        # ブラウザの初期設定
+        self.set_window_bounds()
 
-        id = ids[0]
-        browser_controller.set_window_bounds(9222, id, 0, 0, 600, 600)
-
-        ids = browser_controller.get_unique_window_ids(9223)
-        if len(ids) > 1:
-            logger.warning(
-                "複数のウィンドウIDが取得されました。最初のウィンドウのみを設定します。"
-            )
-
-        id = ids[0]
-        browser_controller.set_window_bounds(9223, id, 680, 0, 600, 600)
-
-        await asyncio.gather(
-            browser_controller.start_browser(9222),
-            browser_controller.start_browser(9223),
-        )
+        # 定期的にウィンドウの位置・サイズを更新するタスクを開始
+        bounds_task = asyncio.create_task(self.periodic_set_window_bounds())
 
         # サーバーの起動
         runner = web.AppRunner(app)
@@ -433,16 +426,21 @@ class webRTCServer:
         site = web.TCPSite(runner, host="0.0.0.0", port=8443, ssl_context=ssl_context)
         await site.start()
 
+        logger.info("WebRTC server started")
         try:
             await asyncio.Event().wait()
+            logger.info("WebRTC server stopped")
         finally:
+            bounds_task.cancel()
             await runner.cleanup()
 
     def start(self) -> None:
         """WebRTCサーバーの起動"""
         loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
             loop.run_until_complete(self._start())
+            loop.run_forever()
         finally:
             pending = asyncio.all_tasks(loop)
             for task in pending:
@@ -452,6 +450,47 @@ class webRTCServer:
             loop.close()
 
 
+async def run_agent_task(port: int) -> None:
+    """ブラウザを起動し、初期設定を行う"""
+    browser = Browser(
+        config=BrowserConfig(cdp_url=BrowserController.get_devtools_url(port))
+    )
+    config = BrowserContextConfig(
+        browser_window_size={'width': 600, 'height': 825},
+    )
+    context = BrowserContext(browser=browser, config=config)
+    model = ChatOpenAI(model='gpt-4o')
+    agent = Agent(
+        task="蜜柑は英語で何という？",
+        llm=model,
+        controller=Controller(),
+        browser_context=context,
+    )
+    await agent.run()
+    await asyncio.sleep(1)
+
+
 if __name__ == "__main__":
     server = webRTCServer()
-    server.start()
+    server_thread = threading.Thread(target=server.start, daemon=True)
+    server_thread.start()
+
+    time.sleep(10)
+    logger.info("Server started.")
+
+    input("Press Enter to continue...\n")
+
+    async def main_agent_tasks() -> None:
+        """メインスレッド用のエージェントタスクを並列で実行"""
+        await asyncio.gather(
+            run_agent_task(9222),
+            run_agent_task(9223),
+        )
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main_agent_tasks())
+
+    logger.info("All agent tasks completed.")
+    while True:
+        time.sleep(1)
+        pass
