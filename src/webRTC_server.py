@@ -68,9 +68,15 @@ class WindowBounds:
 
 
 class BrowserController:
-    """ブラウザの制御を管理するクラス"""
+    """ブラウザの制御を行うクラス"""
 
     def __init__(self, port_list: list, window_bounds_list: list[WindowBounds]) -> None:
+        """初期化
+
+        Args:
+            port_list (list): cdpポート番号のリスト
+            window_bounds_list (list[WindowBounds]): ウィンドウの位置・サイズのリスト
+        """
         self.browser_list: list = []
 
         assert len(port_list) == len(window_bounds_list)
@@ -145,7 +151,7 @@ class BrowserController:
     def get_unique_window_ids(self, port: int) -> list[int]:
         """
         指定されたポート内のCDPエンドポイントから全ターゲット情報を取得し、
-        各ターゲットに対して Browser.getWindowForTarget を実行してウィンドウIDを取得します。
+        各ターゲットに対して getWindowForTarget を実行してウィンドウIDを取得します。
         重複するIDは含めず、ユニークなウィンドウIDのリストを返します。
         """
         unique_ids = set()
@@ -171,7 +177,7 @@ class BrowserController:
         return window_ids
 
     def set_window_bounds(self) -> None:
-        """ウィンドウの位置・サイズを設定"""
+        """管理対象の全てのウィンドウの位置・サイズを設定"""
         for port, window_bounds in zip(self.port_list, self.window_bounds_list):
             window_ids = self.get_unique_window_ids(port)
             for window_id in window_ids:
@@ -187,7 +193,7 @@ class BrowserController:
     def _set_window_bounds(
         self, port: int, window_id: int, x: int, y: int, width: int, height: int
     ) -> Any:
-        """CDP経由でウィンドウの位置・サイズを設定"""
+        """CDP経由で特定のポート内のウィンドウの位置・サイズを設定"""
         # まず、任意のターゲットのWebSocket URLを取得
         target = self._get_target_info(port)[0]
         ws_url = target["webSocketDebuggerUrl"]
@@ -474,7 +480,7 @@ class webRTCServer:
 
 
 async def run_agent_task(port: int) -> None:
-    """ブラウザを起動し、初期設定を行う"""
+    """テスト用のエージェントタスク"""
     browser = Browser(
         config=BrowserConfig(cdp_url=BrowserController.get_devtools_url(port))
     )
@@ -506,7 +512,9 @@ if __name__ == "__main__":
     time.sleep(10)
     logger.info("Server started.")
 
-    input("Press Enter to continue...\n")
+    input(
+        "Unityを起動し、webRTCの接続が確認出来たら、任意のキーを押して続行してください\n"
+    )
 
     async def main_agent_tasks() -> None:
         """メインスレッド用のエージェントタスクを並列で実行"""
