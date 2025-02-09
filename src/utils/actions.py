@@ -32,6 +32,7 @@ class BaseAgentAction(py_trees.behaviour.Behaviour, ABC):
         name: str,
         agent_dict: dict[str, AiAgent],
         send_message_callback: Callable | None = None,
+        waiting_callback: Callable[[], bool] = lambda: False,
     ) -> None:
         super(BaseAgentAction, self).__init__(name)
         self.agent_dict = agent_dict
@@ -45,6 +46,7 @@ class BaseAgentAction(py_trees.behaviour.Behaviour, ABC):
         )
         self.send_message_callback = send_message_callback
         logger.info(f"AgentAction: {name} を初期化しました")
+        self.waiting_callback = waiting_callback
 
     def allocate_agent(self) -> str:
         """agent_dictから話者を選択する
@@ -225,6 +227,7 @@ class PrepareDebateAction(BaseMultiAgentAction):
         debate: Debate,
         send_message_callback: Callable,
         mode: str = "WebSearch",
+        waiting_callback: Callable[[], bool] = lambda: False,
     ) -> None:
         super().__init__(name, agent_dict, send_message_callback)
         self.loader = create_agenda_callback
@@ -232,16 +235,18 @@ class PrepareDebateAction(BaseMultiAgentAction):
         self.agenda_list: list[str] = ["", ""]
         self.debate = debate
         self.mode = mode
+        self.waiting_callback = waiting_callback
 
     def start_new_debate(self) -> None:
         assert self.send_message_callback is not None
         self.send_message_callback(
             name="system",
-            reply="これからお二人には視聴者が気になる話題についてディベートを行って頂きましょう。視聴者の皆さんはお二人に議論してほしい話題をコメントで送って下さい。",
+            reply="",
             action="",
             emotion="",
             scene="debate",
         )
+        time.sleep(0.1)
 
         self.agenda = self.loader()
         assert isinstance(self.agenda, str), "agendaはstr型である必要があります"
@@ -253,6 +258,17 @@ class PrepareDebateAction(BaseMultiAgentAction):
             emotion="",
             scene="",
         )
+        while not self.waiting_callback():
+            time.sleep(0.1)
+        self.send_message_callback(
+            name="host",
+            reply="最初にシンキングタイムが与えられますので、あなたの主張を裏付ける根拠を調べて、準備してください。",
+            action="",
+            emotion="",
+            scene="",
+        )
+        while not self.waiting_callback():
+            time.sleep(0.1)
 
         # self.send_message_callback(
         #     name="host",
@@ -276,14 +292,14 @@ class PrepareDebateAction(BaseMultiAgentAction):
             prompt_prefix = (
                 "これから相方とディベートを行ってもらいます。あなたは以下の主張を正当化し、相方を論破してください。",
                 "最初にシンキングタイムが与えられますので、あなたの主張を裏付ける根拠を調べて、準備してください。:\n",
-                "WebSearchを使用し、Thinkは使用しないでください\n",
+                "かならずWebSearchを使用してください\n",
                 "主張：",
             )
         elif self.mode == "Think":
             prompt_prefix = (
                 "これから相方とディベートを行ってもらいます。あなたは以下の主張を正当化し、相方を論破してください。",
                 "最初にシンキングタイムが与えられますので、あなたの主張を裏付ける根拠を考えて、準備してください。:\n",
-                "Thinkを使用し、WebSearchは使用しないでください\n",
+                "かならずThinkを使用してください\n",
                 "主張：",
             )
         else:
@@ -295,6 +311,15 @@ class PrepareDebateAction(BaseMultiAgentAction):
 
 class StartDebateAction(BaseAgentAction):
     def generate_prompt(self) -> str:
+        self.send_message_callback(
+            name="host",
+            reply="シンキングタイムが終了しました。ディベートを開始してください。",
+            action="",
+            emotion="",
+            scene="",
+        )
+        while not self.waiting_callback():
+            time.sleep(1)
         prompt = (
             "シンキングタイムが終了しました。ディベートを開始します。最初に、あなたの論証を相方に対して述べてください。"
             "シンキングタイムで有効な情報が得られなかった場合は、自分の考えで論証を構築してください"
@@ -333,9 +358,11 @@ class EndDebateAction(BaseMultiAgentAction):
         agent_dict: dict[str, AiAgent],
         debate: Debate,
         send_message_callback: Callable,
+        waiting_callback: Callable[[], bool] = lambda: False,
     ) -> None:
         super().__init__(name, agent_dict, send_message_callback)
         self.debate = debate
+        self.waiting_callback = waiting_callback
 
     def generate_prompt(self) -> list[str]:
         assert self.send_message_callback is not None
@@ -347,6 +374,8 @@ class EndDebateAction(BaseMultiAgentAction):
             scene="",
         )
         winner = self.debate.judge_winner()
+        while not self.waiting_callback():
+            time.sleep(1)
 
         self.send_message_callback(
             name="host",
@@ -355,6 +384,8 @@ class EndDebateAction(BaseMultiAgentAction):
             emotion="",
             scene="",
         )
+        while not self.waiting_callback():
+            time.sleep(1)
 
         prompt = (
             "ディベートが終了しました。結果を発表します。\n"
@@ -415,10 +446,7 @@ class WaitingAction(py_trees.behaviour.Behaviour):
         self.waiting_callback = waiting_callback
 
     def update(self) -> py_trees.common.Status:
-        while True:
-            print("Waiting...")
-            if self.waiting_callback():
-                break
+        while not self.waiting_callback():
             time.sleep(1)
 
         return py_trees.common.Status.SUCCESS
