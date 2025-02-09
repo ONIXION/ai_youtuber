@@ -91,33 +91,34 @@ class DualAgentController:
         )
         self.agent_dict = {"agent1": self.agent1, "agent2": self.agent2}
 
-        self.embedding_engine = EmbeddinEngine()
-        self.debate = Debate("embedding_based_update", self.embedding_engine)
+        # self.embedding_engine = EmbeddinEngine()
+        # self.debate = Debate("embedding_based_update", self.embedding_engine)
+        self.debate = Debate("simple_update")
 
         time.sleep(3)
 
         self.root = py_trees.composites.Sequence("root", memory=False)
         self.root.add_children(
             [
-                PickAgendaAction(
-                    name="PickAgendaAction",
-                    agent_dict=self.agent_dict,
-                    fetch_comment_callback=conversation_agenda_callback,
-                    send_message_callback=send_message_callback,
-                ),
-                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
-                ConversationAction(
-                    name="ConversationAction1", agent_dict=self.agent_dict
-                ),
-                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
-                ConversationAction(
-                    name="ConversationAction2", agent_dict=self.agent_dict
-                ),
-                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
-                ConversationAction(
-                    name="ConversationAction3", agent_dict=self.agent_dict
-                ),
-                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                # PickAgendaAction(
+                #     name="PickAgendaAction",
+                #     agent_dict=self.agent_dict,
+                #     fetch_comment_callback=conversation_agenda_callback,
+                #     send_message_callback=send_message_callback,
+                # ),
+                # WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                # ConversationAction(
+                #     name="ConversationAction1", agent_dict=self.agent_dict
+                # ),
+                # WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                # ConversationAction(
+                #     name="ConversationAction2", agent_dict=self.agent_dict
+                # ),
+                # WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                # ConversationAction(
+                #     name="ConversationAction3", agent_dict=self.agent_dict
+                # ),
+                # WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
                 PrepareDebateAction(
                     name="PrepareDebateAction",
                     agent_dict=self.agent_dict,

@@ -236,13 +236,13 @@ class PrepareDebateAction(BaseMultiAgentAction):
 
     def start_new_debate(self) -> None:
         assert self.send_message_callback is not None
-        self.send_message_callback(
-            name="host",
-            reply="これからお二人には視聴者が気になる話題についてディベートを行って頂きましょう。視聴者の皆さんはお二人に議論してほしい話題をコメントで送って下さい。",
-            action="",
-            emotion="",
-            scene="debate",
-        )
+        # self.send_message_callback(
+        #     name="host",
+        #     reply="これからお二人には視聴者が気になる話題についてディベートを行って頂きましょう。視聴者の皆さんはお二人に議論してほしい話題をコメントで送って下さい。",
+        #     action="",
+        #     emotion="",
+        #     scene="debate",
+        # )
 
         self.agenda = self.loader()
         assert isinstance(self.agenda, str), "agendaはstr型である必要があります"
@@ -255,13 +255,13 @@ class PrepareDebateAction(BaseMultiAgentAction):
             scene="",
         )
 
-        self.send_message_callback(
-            name="host",
-            reply="ディベートの勝敗は視聴者の皆さんによって決定されます。お二人の意見を聞いて、どちらが正しいと思うかコメントで教えて下さい。",
-            action="",
-            emotion="",
-            scene="",
-        )
+        # self.send_message_callback(
+        #     name="host",
+        #     reply="ディベートの勝敗は視聴者の皆さんによって決定されます。お二人の意見を聞いて、どちらが正しいと思うかコメントで教えて下さい。",
+        #     action="",
+        #     emotion="",
+        #     scene="",
+        # )
 
         self.agenda_list[0] = f"{self.agenda}は正しい"
         self.agenda_list[1] = f"{self.agenda}は誤り"

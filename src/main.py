@@ -10,7 +10,7 @@ from typing import Callable
 
 from dotenv import load_dotenv
 
-from src.agent import TalkFormat
+from src.agent import TalkFormat, DebateAgendaModel, TalkInput
 from src.agent_controller import DualAgentController
 from src.connect_unity import WebSocketServer
 from src.test.dummy_youtube import DummyYouTubeLiveChat
@@ -49,7 +49,8 @@ class YoutubeLive:
             self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT)
             # self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT, debug=True)
         if mode == "test":
-            self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT, debug=True)
+            self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT)
+            # self.unity_server = WebSocketServer(port=WEBSOCKET_SERVER_PORT, debug=True)
         self.unity_server.start()
 
         # YouTube Liveの設定
@@ -74,24 +75,24 @@ class YoutubeLive:
             self.youtube = DummyYouTubeLiveChat()
 
         # 必要なsubprocessを開始
-        if not mode == "test":
-            subprocess.Popen(
-                [AIvisSpeech_EXECUTABLE],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            subprocess.Popen(
-                [BouyomiChan_EXECUTABLE],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            subprocess.Popen(
-                [UnityApp_EXECUTABLE],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            # 5秒待機
-            asyncio.run(asyncio.sleep(5))
+        # if not mode == "test":
+        subprocess.Popen(
+            [AIvisSpeech_EXECUTABLE],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.Popen(
+            [BouyomiChan_EXECUTABLE],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.Popen(
+            [UnityApp_EXECUTABLE],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        # 5秒待機
+        asyncio.run(asyncio.sleep(5))
 
         # agent_controllerの初期化
         name_list = ["雲霧星奈", "星霧月音"]
@@ -109,6 +110,9 @@ class YoutubeLive:
             num_update_comment=num_update_comment,
             send_message_callback=self.unity_server.send_message_to_all,
         )
+        self.mode = mode
+        self.debate_agenda = None
+        self.debate_agenda_model = DebateAgendaModel()
 
     def __del__(self) -> None:
         """デコンストラクタ"""
@@ -116,6 +120,28 @@ class YoutubeLive:
 
     def start(self) -> None:
         """対話を開始する"""
+        while True:
+            name, comment = self.get_youtube_comment_with_name()
+            if "ディベート" in comment or "ディスカッション" in comment or "議論" in comment or "話し合って" in comment:
+                # LLMにディベートの議題を取得させる
+                self.debate_agenda = self.debate_agenda_model.generate_agenda(comment)
+                break
+            else:
+                # self.agent_controller.agent1とagent2に会話させる．
+                # agent1にコメントを入力
+                agent1_input = TalkInput(name=name, input=comment).model_dump_json()
+                agent1_response = asyncio.run(self.agent_controller.agent1.graph.ainvoke({"messages": [agent1_input]}))
+                agent1_reply = TalkFormat.model_validate_json(agent1_response["messages"][-1].content)
+                while True:
+                    if self.waiting_callback():
+                        break
+                # agent2にコメントとagent1の応答を入力
+                agent2_input = TalkInput(name=name, input=f"{comment}\n雲霧星奈: {agent1_reply.reply}").model_dump_json()
+                agent2_response = asyncio.run(self.agent_controller.agent2.graph.ainvoke({"messages": [agent2_input]}))
+                agent2_reply = TalkFormat.model_validate_json(agent2_response["messages"][-1].content)
+                while True:
+                    if self.waiting_callback():
+                        break
         self.agent_controller.start_dialog()
 
     def close(self) -> None:
@@ -189,6 +215,8 @@ class YoutubeLive:
         return url
 
     def get_random_comment_callback(self) -> str:
+        if self.mode == "test":
+            self.youtube.start_monitoring()
         while True:
             response = self.youtube.get_random_comment()
             if response is not None:
@@ -204,14 +232,35 @@ class YoutubeLive:
             emotion="",
             scene="",
         )
-
         assert isinstance(res, str)
         return res
 
+    def get_youtube_comment_with_name(self):
+        if self.mode == "test":
+            self.youtube.start_monitoring()
+        while True:
+            response = self.youtube.get_random_comment()
+            if response is not None:
+                break
+            logger.info("コメントが取得できませんでした。再取得します...")
+            asyncio.run(asyncio.sleep(5))
+        res = response["text"]
+        name = response["author"]
+        self.unity_server.send_message_to_all(
+            name="message",
+            reply=res,
+            action="",
+            emotion="",
+            scene="",
+        )
+        return name, res
+
+    def debate_agenda_callback(self) -> str:
+        return self.debate_agenda
 
 if __name__ == "__main__":
     # 初期化
-    youtube_live = YoutubeLive()
+    youtube_live = YoutubeLive(mode="test")
     try:
         # モニタリングを開始
         youtube_live.start()

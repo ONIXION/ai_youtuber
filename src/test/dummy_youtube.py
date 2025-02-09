@@ -1,22 +1,17 @@
 from collections import deque
-
+import random
 
 class DummyYouTubeLiveChat:
     def __init__(self) -> None:
         self.comments: deque[dict] = deque(maxlen=1000)
-        self.add_dummy_comment("蜜柑はりんごより甘いか")
-        self.add_dummy_comment("蜜柑はりんごより甘いか")
-        self.add_dummy_comment("蜜柑はりんごより甘い")
-        self.add_dummy_comment("りんごは蜜柑より甘い")
-        self.add_dummy_comment("蜜柑より甘い果物はない")
-        self.add_dummy_comment("りんごより甘い果物はない")
+        self.add_dummy_comment("こんにちは")
 
     def start_monitoring(self) -> None:
         while True:
             comment = input("Please input a comment or 'exit' to quit: ")
             if comment == "exit":
                 break
-            author = "dummy"
+            author = "社会の歯車"
             self.comments.append({'author': author, 'text': comment})
 
     def add_dummy_comment(self, comment: str) -> None:
@@ -25,6 +20,11 @@ class DummyYouTubeLiveChat:
     def get_random_comment(self) -> dict | None:
         if not self.comments:
             return None
-        res = self.comments.popleft()
-        assert isinstance(res, dict)
-        return res
+        # ランダムなindexを選択
+        random_index = random.randint(0, len(self.comments) - 1)
+        comment = self.comments[random_index]
+        # random_indexより前のコメントを削除
+        self.comments = deque(
+            list(self.comments)[random_index + 1 :], maxlen=self.comments.maxlen
+        )
+        return comment

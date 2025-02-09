@@ -60,7 +60,6 @@ class TalkInput(BaseModel):
     name: str
     input: str
 
-
 # TalkModelの出力形式を定義
 class TalkFormat(BaseModel):
     reply: str = Field(..., description="視聴者に対する返答")
@@ -147,6 +146,28 @@ def web_search_creater(browser_port: int) -> Any:
 
     return _web_search
 
+class DebateAgendaModel:
+    def __init__(self):
+        self.llm = ChatOpenAI(temperature=0.7)
+        self.prompt = ChatPromptTemplate.from_messages([
+            SystemMessage(content="""
+入力された文章からディベートの議題を抽出してください。
+出力は議題のみを簡潔に返してください．
+
+入力例：ミカンとリンゴ，どちらが甘いかディベートして
+出力例：ミカンはリンゴより甘い
+
+入力例：安楽死を認めるべきかどうかディベートして
+出力例：安楽死を認めること
+            """),
+            HumanMessage(content="{input}")
+        ])
+        self.chain = self.prompt | self.llm
+
+    async def generate_agenda(self, text: str) -> str:
+        """ディベートの議題を生成する"""
+        response = await self.chain.ainvoke({"input": text})
+        return response.content
 
 class AiAgent:
     def __init__(
