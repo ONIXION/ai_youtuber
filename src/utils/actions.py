@@ -81,12 +81,17 @@ class BaseAgentAction(py_trees.behaviour.Behaviour, ABC):
             logger.debug(f"AgentAction: {agent_key} に対しての入力: {prompt}")
 
             agent_input = TalkInput(name="host", input=prompt).model_dump_json()
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            response = loop.run_until_complete(
-                agent.graph.ainvoke({"messages": [agent_input]})
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            future = asyncio.ensure_future(
+                agent.graph.ainvoke({"messages": [agent_input]}),
+                loop=loop
             )
-            loop.close()
+            response = loop.run_until_complete(future)
             message = TalkFormat.model_validate_json(
                 response["messages"][-1].content
             ).reply
@@ -115,15 +120,20 @@ class BaseMultiAgentAction(BaseAgentAction, ABC):
             agent2_input = TalkInput(name="host", input=prompt2).model_dump_json()
 
             # 全ての応答を得るまで待機
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            responses = loop.run_until_complete(
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            future = asyncio.ensure_future(
                 asyncio.gather(
                     agent1.graph.ainvoke({"messages": [agent1_input]}),
                     agent2.graph.ainvoke({"messages": [agent2_input]}),
-                )
+                ),
+                loop=loop
             )
-            loop.close()
+            responses = loop.run_until_complete(future)
             response1, response2 = responses
             assert response1 is not None and response2 is not None
 
