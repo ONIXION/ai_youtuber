@@ -15,6 +15,7 @@ from src.agent_controller import DualAgentController
 from src.connect_unity import WebSocketServer
 from src.test.dummy_youtube import DummyYouTubeLiveChat
 from src.youtube import YouTubeLiveChat
+import time
 
 load_dotenv()
 
@@ -225,9 +226,19 @@ class YoutubeLive:
             if response is not None:
                 break
             logger.info("コメントが取得できませんでした。再取得します...")
-            asyncio.run(asyncio.sleep(5))
+            time.sleep(5)
 
         res = response["text"]
+        name = response["author"]
+        if self.mode == "test":
+            self.unity_server.send_message_to_all(
+                name="comment",
+                reply=res,
+                action="",
+                emotion=name,
+                scene="",
+            )
+            time.sleep(0.1)
         self.unity_server.send_message_to_all(
             name="message",
             reply=res,
@@ -246,9 +257,18 @@ class YoutubeLive:
             if response is not None:
                 break
             logger.info("コメントが取得できませんでした。再取得します...")
-            await asyncio.sleep(5)
+            time.sleep(5)
         res = response["text"]
         name = response["author"]
+        if self.mode == "test":
+            self.unity_server.send_message_to_all(
+                name="comment",
+                reply=res,
+                action="",
+                emotion=name,
+                scene="",
+            )
+            time.sleep(0.1)
         self.unity_server.send_message_to_all(
             name="message",
             reply=res,

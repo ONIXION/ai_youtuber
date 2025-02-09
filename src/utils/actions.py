@@ -331,8 +331,8 @@ class StartDebateAction(BaseAgentAction):
         while not self.waiting_callback():
             time.sleep(1)
         prompt = (
-            "シンキングタイムが終了しました。ディベートを開始します。最初に、あなたの論証を相方に対して述べてください。"
-            "シンキングタイムで有効な情報が得られなかった場合は、自分の考えで論証を構築してください"
+            "シンキングタイムが終了しました。ディベートを開始します。最初に、できるだけ短くあなたの論証を相方に対して述べてください。"
+            "シンキングタイムで有効な情報が得られなかった場合でも、自らの主張を曲げず，自分の考えで論証を構築してください"
         )
 
         return prompt
@@ -354,7 +354,7 @@ class DebateAction(BaseAgentAction):
         assert last_speaker_response != "", f"{last_speaker}_response is empty"
 
         prompt_prefix = (
-            "あなたの相方は以下のように発言しました。これに対してシンキングタイムで考えた内容をもとに、反論してください:\n",
+            "あなたの相方は以下のように発言しました。これに対してシンキングタイムで考えた内容をもとに、できるだけ短く反論してください:\n",
             "相方の発言：",
         )
         prompt = "\n".join(prompt_prefix) + last_speaker_response
