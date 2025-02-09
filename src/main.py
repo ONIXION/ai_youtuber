@@ -2,6 +2,8 @@
 
 import asyncio
 import logging
+import threading
+import time
 from logging import Formatter, StreamHandler, getLogger
 from typing import Callable
 
@@ -11,6 +13,7 @@ from src.agent import TalkFormat
 from src.agent_controller import DualAgentController
 from src.connect_unity import WebSocketServer
 from src.test.dummy_youtube import DummyYouTubeLiveChat
+from src.webRTC_server import WebRTCServer, WindowBounds
 from src.youtube import YouTubeLiveChat
 
 load_dotenv()
@@ -64,6 +67,23 @@ class YoutubeLive:
         name_list = ["雲霧星奈", "星霧月音"]
         port_list = [9222, 9223]
         num_update_comment = 1  # ディベートの際に各ターンで取得するコメント数
+
+        port_list = [9222, 9223]
+        window_bounds_list = [
+            WindowBounds(0, 0, 600, 600),
+            WindowBounds(640, 0, 600, 600),
+        ]
+        server = WebRTCServer(
+            port_list=port_list, window_bounds_list=window_bounds_list
+        )
+        server_thread = threading.Thread(target=server.start, daemon=True)
+        server_thread.start()
+
+        time.sleep(10)
+        logger.info("Server started.")
+        input(
+            "Unityを起動し、webRTCの接続が確認出来たら、任意のキーを押して続行してください\n"
+        )
 
         if mode == "test":
 

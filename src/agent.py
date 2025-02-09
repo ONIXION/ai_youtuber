@@ -347,7 +347,7 @@ class AiAgent:
             except Exception as e:
                 logger.error(f"Error in assist: {e}")
                 if attempt < max_retries - 1:
-                    await asyncio.sleep(2**attempt)
+                    await asyncio.sleep(4**attempt)
                     continue
                 else:
                     raise e

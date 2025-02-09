@@ -291,7 +291,7 @@ class ScreenCaptureTrack(MediaStreamTrack):
             raise
 
 
-class webRTCServer:
+class WebRTCServer:
     def __init__(
         self, port_list: list[int], window_bounds_list: list[WindowBounds]
     ) -> None:
@@ -505,7 +505,7 @@ if __name__ == "__main__":
         WindowBounds(0, 0, 600, 600),
         WindowBounds(640, 0, 600, 600),
     ]
-    server = webRTCServer(port_list=port_list, window_bounds_list=window_bounds_list)
+    server = WebRTCServer(port_list=port_list, window_bounds_list=window_bounds_list)
     server_thread = threading.Thread(target=server.start, daemon=True)
     server_thread.start()
 
