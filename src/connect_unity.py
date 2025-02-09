@@ -186,7 +186,7 @@ class WebSocketServer:
                 }
             )
             await client.send(message)
-            print(f"Sent message to client: {message}")
+            # print(f"Sent message to client: {message}")
 
         except Exception as e:
             print(f"Failed to send message: {str(e)}")

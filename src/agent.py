@@ -193,6 +193,7 @@ class AiAgent:
         # パラメータ設定
         # レートリミットが厳しかったので，gemini-1.5-flashを使用
         gemini_flash = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
+        gpt_4o = ChatOpenAI(model="gpt-4o", temperature=0.7)
         # gemini_flash = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.7)
         self.message_history: BaseMessage = []
         self.mh_limit = 10  # 10なら対話5回分の履歴を保持
@@ -226,7 +227,8 @@ class AiAgent:
                 MessagesPlaceholder(variable_name="message"),
             ]
         )
-        self.talk_model = talk_prompt | gemini_flash.with_structured_output(TalkFormat)
+        self.talk_model = talk_prompt | gpt_4o.with_structured_output(TalkFormat)
+        # self.talk_model = talk_prompt | gemini_flash.with_structured_output(TalkFormat)
         # AssistModelの設定
         assist_prompt = ChatPromptTemplate.from_messages(
             [

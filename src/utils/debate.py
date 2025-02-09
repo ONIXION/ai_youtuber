@@ -1,5 +1,8 @@
 from dataclasses import dataclass
-from typing import cast
+from typing import cast, List
+
+from langchain_openai import ChatOpenAI
+from langchain.schema import HumanMessage, SystemMessage
 
 from src.utils.embedding import EmbeddinEngine
 
@@ -91,14 +94,47 @@ class Debate:
             case _:
                 pass
 
-    # TODO: 引き分けの場合の処理を追加
-    def judge_winner(self) -> str:
-        """勝者を判定する
+    def judge_winner(self, conversation_history: List[str]) -> str:
+        """AIによってディベートの勝者を判定する
+
+        Args:
+            conversation_history (List[str]): ディベートの会話履歴のリスト
 
         Returns:
-            str: 勝者の名前
+            str: 勝者の名前 (name_listに含まれる名前のうちの1つ)
         """
-        return max(self.debaters, key=lambda x: x.score).name
+        llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
+        name_list = [debater.name for debater in self.debaters]
+        topic = self.debaters[0].argument.replace("は正しい", "")  # ディベートのトピックを抽出
+        system_prompt = f"""あなたはディベートの審判です。
+2人のディベーターの議論を分析し、より説得力のある主張をした方を勝者として選んでください。
+
+ディベートのトピック: {topic}
+参加者: {', '.join(name_list)}
+
+以下の点を考慮して判断してください:
+- 主張の論理性と一貫性
+- 提示された証拠や根拠の質
+- 反論の的確さ
+- 議論の説得力
+
+必ず {' または '.join(name_list)} のどちらかの名前のみを返してください。"""
+
+        conversation_text = "\n".join(conversation_history)
+        human_prompt = f"以下の会話内容から勝者を判定してください:\n\n{conversation_text}"
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=human_prompt)
+        ]
+        response = llm.invoke(messages).content.strip()
+        # 返された名前が参加者リストに含まれているか確認
+        if response not in name_list:
+            raise ValueError(
+                f"AIが返した名前が参加者リストに含まれていません: {response}"
+            )
+            # 含まれていない場合は、スコアベースでフォールバック
+            # return max(self.debaters, key=lambda x: x.score).name
+        return response
 
     def get_current_status(self) -> list[Debater]:
         """現在のディベートの状況を取得する

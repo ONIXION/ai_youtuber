@@ -142,27 +142,38 @@ class DualAgentController:
                 #     num_get_comment=num_update_comment,
                 # ),
                 # WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
-                DebateAction(name="DebateAction1", agent_dict=self.agent_dict),
+                DebateAction(
+                    name="DebateAction1",
+                    agent_dict=self.agent_dict,
+                    send_message_callback=send_message_callback,
+                    waiting_callback=waiting_callback
+                ),
                 # UpdateAction(
                 #     name="UpdateAction1",
                 #     debate=self.debate,
                 #     fetch_comment_callback=fetch_comment_callback,
                 #     num_get_comment=num_update_comment,
                 # ),
-                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
-                DebateAction(name="DebateAction2", agent_dict=self.agent_dict),
+                # WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                DebateAction(
+                    name="DebateAction2",
+                    agent_dict=self.agent_dict,
+                    send_message_callback=send_message_callback,
+                    waiting_callback=waiting_callback
+                ),
                 # UpdateAction(
                 #     name="UpdateAction1",
                 #     debate=self.debate,
                 #     fetch_comment_callback=fetch_comment_callback,
                 #     num_get_comment=num_update_comment,
                 # ),
-                WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
+                # WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback), # ここで止まる なぜ？
                 EndDebateAction(
                     name="EndDebateAction",
                     agent_dict=self.agent_dict,
                     debate=self.debate,
                     send_message_callback=send_message_callback,
+                    waiting_callback=waiting_callback,
                 ),
                 WaitingAction(name="WaitingAction1", waiting_callback=waiting_callback),
                 PlayAgainAction(name="PlayAgainAction"),
@@ -194,4 +205,4 @@ class DualAgentController:
             if play_again_status == py_trees.common.Status.FAILURE:
                 break
             # 各tickの間に少し待機して処理が集中しないようにする
-            time.sleep(0.1)
+            time.sleep(0.5)

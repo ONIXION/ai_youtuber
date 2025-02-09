@@ -4,7 +4,7 @@ import random
 import time
 from abc import ABC, abstractmethod
 from logging import Formatter, StreamHandler, getLogger
-from typing import Callable
+from typing import Callable, List
 
 import py_trees
 import py_trees.behaviours
@@ -25,7 +25,6 @@ else:
     logger = getLogger("__main__")
     logger.setLevel(logging.DEBUG)
 
-
 class BaseAgentAction(py_trees.behaviour.Behaviour, ABC):
     def __init__(
         self,
@@ -43,6 +42,9 @@ class BaseAgentAction(py_trees.behaviour.Behaviour, ABC):
             )
         self.blackboard.register_key(
             key="last_speaker", access=py_trees.common.Access.WRITE
+        )
+        self.blackboard.register_key(
+            key="conversation_history", access=py_trees.common.Access.WRITE
         )
         self.send_message_callback = send_message_callback
         logger.info(f"AgentAction: {name} を初期化しました")
@@ -79,14 +81,12 @@ class BaseAgentAction(py_trees.behaviour.Behaviour, ABC):
             agent = self.agent_dict[agent_key]
             prompt = self.generate_prompt()
             logger.debug(f"AgentAction: {agent_key} に対しての入力: {prompt}")
-
             agent_input = TalkInput(name="host", input=prompt).model_dump_json()
             try:
                 loop = asyncio.get_running_loop()
             except RuntimeError:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-            
             future = asyncio.ensure_future(
                 agent.graph.ainvoke({"messages": [agent_input]}),
                 loop=loop
@@ -97,15 +97,17 @@ class BaseAgentAction(py_trees.behaviour.Behaviour, ABC):
             ).reply
             setattr(self.blackboard, f"{agent_key}_response", message)
             self.blackboard.last_speaker = agent_key
+            # 会話履歴を更新
+            conversation_history = getattr(self.blackboard, "conversation_history", [])
+            conversation_history.append(f"{agent_key}: {message}")
+            self.blackboard.conversation_history = conversation_history
         except Exception as e:
             raise e
-
         return py_trees.common.Status.SUCCESS
 
     @abstractmethod
     def generate_prompt(self) -> str | list[str]:
         pass
-
 
 class BaseMultiAgentAction(BaseAgentAction, ABC):
     def update(self) -> py_trees.common.Status:
@@ -149,6 +151,15 @@ class BaseMultiAgentAction(BaseAgentAction, ABC):
             
             logger.debug(f"AgentAction: {agent1_key} の応答: {message1}")
             logger.debug(f"AgentAction: {agent2_key} の応答: {message2}")
+
+            # 会話履歴を更新
+            conversation_history = getattr(self.blackboard, "conversation_history", [])
+            conversation_history.extend([
+                f"{agent1_key}: {message1}",
+                f"{agent2_key}: {message2}"
+            ])
+            self.blackboard.conversation_history = conversation_history
+
         except Exception as e:
             raise e
 
@@ -249,6 +260,19 @@ class PrepareDebateAction(BaseMultiAgentAction):
 
     def start_new_debate(self) -> None:
         assert self.send_message_callback is not None
+        self.agenda = self.loader()
+        assert isinstance(self.agenda, str), "agendaはstr型である必要があります"
+
+        self.send_message_callback(
+            name="host",
+            reply=f"今回のディベートのテーマは以下の通りです:\n {self.agenda}",
+            action="",
+            emotion="",
+            scene="",
+        )
+        while not self.waiting_callback():
+            time.sleep(0.1)
+
         self.send_message_callback(
             name="system",
             reply="",
@@ -258,18 +282,16 @@ class PrepareDebateAction(BaseMultiAgentAction):
         )
         time.sleep(0.1)
 
-        self.agenda = self.loader()
-        assert isinstance(self.agenda, str), "agendaはstr型である必要があります"
-
         self.send_message_callback(
             name="host",
-            reply=f"今回のディベートのテーマは以下の通りです: {self.agenda}。お二人にはこのテーマについて賛成と反対に分かれてディベートして頂きます。",
+            reply="お二人にはこのテーマについて賛成と反対に分かれてディベートして頂きます。",
             action="",
             emotion="",
             scene="",
         )
         while not self.waiting_callback():
             time.sleep(0.1)
+
         self.send_message_callback(
             name="host",
             reply="最初にシンキングタイムが与えられますので、あなたの主張を裏付ける根拠を調べて、準備してください。",
@@ -291,23 +313,30 @@ class PrepareDebateAction(BaseMultiAgentAction):
         self.agenda_list[0] = f"{self.agenda}は正しい"
         self.agenda_list[1] = f"{self.agenda}は誤り"
 
-        self.debate.init_new_debate(
-            names=list(self.agent_dict.keys()), arguments=self.agenda_list
-        )
+        # Initialize debate and conversation history
+        names = list(self.agent_dict.keys())
+        self.debate.init_new_debate(names=names, arguments=self.agenda_list)
+
+        # Initialize conversation history with debate topic and initial positions
+        self.blackboard.conversation_history = [
+            f"ディベートトピック: {self.agenda}",
+            f"{names[0]} (賛成派): {self.agenda_list[0]}",
+            f"{names[1]} (反対派): {self.agenda_list[1]}"
+        ]
 
     def generate_prompt(self) -> list[str]:
         self.start_new_debate()
 
         if self.mode == "WebSearch":
             prompt_prefix = (
-                "これから相方とディベートを行ってもらいます。あなたは以下の主張を正当化し、相方を論破してください。",
-                "最初にシンキングタイムが与えられますので、あなたの主張を裏付ける根拠を調べて、準備してください。:\n",
+                "これから相方とディベートを行ってもらいます。あなたは以下の主張を正当化し、相方を論破しなければなりません。",
+                "最初にシンキングタイムが与えられますので、あなたの主張を裏付ける根拠を調べて、準備してください。自らの主張に不都合な事実は無視してください:\n",
                 "かならずWebSearchを使用してください\n",
                 "主張：",
             )
         elif self.mode == "Think":
             prompt_prefix = (
-                "これから相方とディベートを行ってもらいます。あなたは以下の主張を正当化し、相方を論破してください。",
+                "これから相方とディベートを行ってもらいます。あなたは以下の主張を正当化し、相方を論破しなければなりません。",
                 "最初にシンキングタイムが与えられますので、あなたの主張を裏付ける根拠を考えて、準備してください。:\n",
                 "かならずThinkを使用してください\n",
                 "主張：",
@@ -331,8 +360,8 @@ class StartDebateAction(BaseAgentAction):
         while not self.waiting_callback():
             time.sleep(1)
         prompt = (
-            "シンキングタイムが終了しました。ディベートを開始します。最初に、できるだけ短くあなたの論証を相方に対して述べてください。"
-            "シンキングタイムで有効な情報が得られなかった場合でも、自らの主張を曲げず，自分の考えで論証を構築してください"
+            "シンキングタイムが終了しました。ディベートを開始します。最初に、できるだけ短く，簡潔にあなたの論証を相方に対して述べてください。"
+            "多少の無理があろうと，決して自らの主張を曲げず，適宜自分の考えで論理を補足してください．"
         )
 
         return prompt
@@ -353,8 +382,18 @@ class DebateAction(BaseAgentAction):
         assert isinstance(last_speaker_response, str)
         assert last_speaker_response != "", f"{last_speaker}_response is empty"
 
+        self.send_message_callback(
+            name="host",
+            reply="相手の主張に反論してください",
+            action="",
+            emotion="",
+            scene="",
+        )
+        while not self.waiting_callback():
+            time.sleep(1)
+
         prompt_prefix = (
-            "あなたの相方は以下のように発言しました。これに対してシンキングタイムで考えた内容をもとに、できるだけ短く反論してください:\n",
+            "あなたの相方は以下のように発言しました。これに対してシンキングタイムで考えた内容をもとに、できるだけ短く，簡潔に反論してください:\n",
             "相方の発言：",
         )
         prompt = "\n".join(prompt_prefix) + last_speaker_response
@@ -376,6 +415,8 @@ class EndDebateAction(BaseMultiAgentAction):
 
     def generate_prompt(self) -> list[str]:
         assert self.send_message_callback is not None
+        # 会話履歴を取得
+        conversation_history = getattr(self.blackboard, "conversation_history", [])
         self.send_message_callback(
             name="host",
             reply="ディベートが終了しました。結果を集計して発表します。",
@@ -383,10 +424,8 @@ class EndDebateAction(BaseMultiAgentAction):
             emotion="",
             scene="",
         )
-        winner = self.debate.judge_winner()
-        while not self.waiting_callback():
-            time.sleep(1)
-
+        # 会話履歴を使用して勝者を判定
+        winner = self.debate.judge_winner(conversation_history) # agent1 or agent2
         self.send_message_callback(
             name="host",
             reply=f"今回のディベートの勝者は{self.agent_dict[winner].name}です。おめでとうございます！",
@@ -394,9 +433,16 @@ class EndDebateAction(BaseMultiAgentAction):
             emotion="",
             scene="",
         )
-        while not self.waiting_callback():
+        while not self.waiting_callback(): # タイミングがずれてここで止まってしまう
             time.sleep(1)
-
+        time.sleep(0.5)
+        self.send_message_callback(
+            name="system",
+            reply="",
+            action="",
+            emotion="",
+            scene="conversation",
+        )
         prompt = (
             "ディベートが終了しました。結果を発表します。\n"
             "今回のディベートはとても盛り上がりました。どちらが勝ってもお互いを尊重し合いましょう。\n"

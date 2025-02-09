@@ -283,7 +283,12 @@ class YoutubeLive:
 
 if __name__ == "__main__":
     # 初期化
-    youtube_live = YoutubeLive(mode="test")
+    # 各ディレクトリが存在する場合のみ削除
+    for dir_name in ["chroma-db-memory星霧月音", "chroma-db-memory雲霧星奈", 
+                    "chroma-db-setting星霧月音", "chroma-db-setting雲霧星奈"]:
+        subprocess.run(f'if exist "{dir_name}" rmdir /s /q "{dir_name}"', shell=True)
+    youtube_live = YoutubeLive()
+    # youtube_live = YoutubeLive(mode="test")
     try:
         # モニタリングを開始
         asyncio.run(youtube_live.start())
