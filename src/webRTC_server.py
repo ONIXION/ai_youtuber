@@ -13,6 +13,7 @@ import subprocess
 import threading
 import time
 import uuid
+from dataclasses import dataclass
 from fractions import Fraction
 from logging import Formatter, StreamHandler, getLogger
 from typing import Any
@@ -56,12 +57,25 @@ else:
     logger.setLevel(logging.WARNING)
 
 
+@dataclass
+class WindowBounds:
+    """ウィンドウの位置・サイズを表すデータクラス"""
+
+    x: int
+    y: int
+    width: int
+    height: int
+
+
 class BrowserController:
     """ブラウザの制御を管理するクラス"""
 
-    def __init__(self, port_list: list) -> None:
+    def __init__(self, port_list: list, window_bounds_list: list[WindowBounds]) -> None:
         self.browser_list: list = []
+
+        assert len(port_list) == len(window_bounds_list)
         self.port_list = port_list
+        self.window_bounds_list = window_bounds_list
 
     def start_chrome(self) -> list[subprocess.Popen]:
         """Chromeを起動する"""
@@ -156,7 +170,21 @@ class BrowserController:
                 )
         return window_ids
 
-    def set_window_bounds(
+    def set_window_bounds(self) -> None:
+        """ウィンドウの位置・サイズを設定"""
+        for port, window_bounds in zip(self.port_list, self.window_bounds_list):
+            window_ids = self.get_unique_window_ids(port)
+            for window_id in window_ids:
+                self._set_window_bounds(
+                    port,
+                    window_id,
+                    window_bounds.x,
+                    window_bounds.y,
+                    window_bounds.width,
+                    window_bounds.height,
+                )
+
+    def _set_window_bounds(
         self, port: int, window_id: int, x: int, y: int, width: int, height: int
     ) -> Any:
         """CDP経由でウィンドウの位置・サイズを設定"""
@@ -258,9 +286,14 @@ class ScreenCaptureTrack(MediaStreamTrack):
 
 
 class webRTCServer:
-    def __init__(self) -> None:
+    def __init__(
+        self, port_list: list[int], window_bounds_list: list[WindowBounds]
+    ) -> None:
         self.pcs: dict = {}
-        self.browser_controller: BrowserController | None = None
+        self.port_list = port_list
+        self.browser_controller: BrowserController = BrowserController(
+            self.port_list, window_bounds_list
+        )
 
     async def offer(self, request: web.Request) -> web.Response:
         params = await request.json()
@@ -375,20 +408,11 @@ class webRTCServer:
         if hasattr(app, 'browser_controller'):
             app['browser_controller'].cleanup()
 
-    def set_window_bounds(self) -> None:
-        assert self.browser_controller is not None
-        window_list = self.browser_controller.get_unique_window_ids(9222)
-        for window_id in window_list:
-            self.browser_controller.set_window_bounds(9222, window_id, 0, 0, 600, 600)
-        window_list = self.browser_controller.get_unique_window_ids(9223)
-        for window_id in window_list:
-            self.browser_controller.set_window_bounds(9223, window_id, 600, 0, 600, 600)
-
-    async def periodic_set_window_bounds(self, interval: int = 10) -> None:
+    async def periodic_set_window_bounds(self, interval: float = 0.5) -> None:
         """定期的に set_window_bounds を実行するタスク（interval秒ごと）"""
         while True:
             try:
-                self.set_window_bounds()
+                self.browser_controller.set_window_bounds()
             except Exception as e:
                 print(f"ウィンドウ境界サイズ更新エラー: {e}")
             await asyncio.sleep(interval)
@@ -405,7 +429,6 @@ class webRTCServer:
         app.router.add_post("/candidate", self.handle_candidate)
 
         # ブラウザコントローラーの初期化と起動
-        self.browser_controller = BrowserController([9222, 9223])
         app['browser_controller'] = self.browser_controller
 
         # ブラウザの起動
@@ -415,7 +438,7 @@ class webRTCServer:
         await asyncio.sleep(5)
 
         # ブラウザの初期設定
-        self.set_window_bounds()
+        self.browser_controller.set_window_bounds()
 
         # 定期的にウィンドウの位置・サイズを更新するタスクを開始
         bounds_task = asyncio.create_task(self.periodic_set_window_bounds())
@@ -471,7 +494,12 @@ async def run_agent_task(port: int) -> None:
 
 
 if __name__ == "__main__":
-    server = webRTCServer()
+    port_list = [9222, 9223]
+    window_bounds_list = [
+        WindowBounds(0, 0, 600, 600),
+        WindowBounds(640, 0, 600, 600),
+    ]
+    server = webRTCServer(port_list=port_list, window_bounds_list=window_bounds_list)
     server_thread = threading.Thread(target=server.start, daemon=True)
     server_thread.start()
 
