@@ -182,7 +182,10 @@ class DualAgentController:
 
         while True:
             self.root.tick_once()
+            print("play_again_status", self.blackboard.play_again_status)
             # PlayAgain ノードの結果によってループを継続するか決定
             play_again_status = self.blackboard.play_again_status
             if play_again_status == py_trees.common.Status.FAILURE:
                 break
+            # 各tickの間に少し待機して処理が集中しないようにする
+            time.sleep(0.1)

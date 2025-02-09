@@ -4,7 +4,6 @@ import random
 class DummyYouTubeLiveChat:
     def __init__(self) -> None:
         self.comments: deque[dict] = deque(maxlen=1000)
-        self.add_dummy_comment("こんにちは")
 
     def start_monitoring(self) -> None:
         while True:

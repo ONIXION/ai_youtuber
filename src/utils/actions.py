@@ -123,6 +123,7 @@ class BaseMultiAgentAction(BaseAgentAction, ABC):
             )
             loop.close()
             response1, response2 = responses
+            assert response1 is not None and response2 is not None
 
             message1 = TalkFormat.model_validate_json(
                 response1["messages"][-1].content
@@ -133,13 +134,11 @@ class BaseMultiAgentAction(BaseAgentAction, ABC):
 
             setattr(self.blackboard, f"{agent1_key}_response", message1)
             setattr(self.blackboard, f"{agent2_key}_response", message2)
+            
+            logger.debug(f"AgentAction: {agent1_key} の応答: {message1}")
+            logger.debug(f"AgentAction: {agent2_key} の応答: {message2}")
         except Exception as e:
             raise e
-
-        logger.debug(f"AgentAction: {agent1_key} の応答: {message1}")
-        logger.debug(f"AgentAction: {agent2_key} の応答: {message2}")
-        assert response1 is not None
-        assert response2 is not None
 
         return py_trees.common.Status.SUCCESS
 
@@ -236,13 +235,13 @@ class PrepareDebateAction(BaseMultiAgentAction):
 
     def start_new_debate(self) -> None:
         assert self.send_message_callback is not None
-        # self.send_message_callback(
-        #     name="host",
-        #     reply="これからお二人には視聴者が気になる話題についてディベートを行って頂きましょう。視聴者の皆さんはお二人に議論してほしい話題をコメントで送って下さい。",
-        #     action="",
-        #     emotion="",
-        #     scene="debate",
-        # )
+        self.send_message_callback(
+            name="system",
+            reply="これからお二人には視聴者が気になる話題についてディベートを行って頂きましょう。視聴者の皆さんはお二人に議論してほしい話題をコメントで送って下さい。",
+            action="",
+            emotion="",
+            scene="debate",
+        )
 
         self.agenda = self.loader()
         assert isinstance(self.agenda, str), "agendaはstr型である必要があります"
@@ -417,6 +416,7 @@ class WaitingAction(py_trees.behaviour.Behaviour):
 
     def update(self) -> py_trees.common.Status:
         while True:
+            print("Waiting...")
             if self.waiting_callback():
                 break
             time.sleep(1)

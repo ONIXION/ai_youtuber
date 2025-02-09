@@ -91,8 +91,9 @@ class YoutubeLive:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        # 5秒待機
-        asyncio.run(asyncio.sleep(5))
+        # 初期化のための待機は同期的に行う
+        import time
+        time.sleep(5)
 
         # agent_controllerの初期化
         name_list = ["雲霧星奈", "星霧月音"]
@@ -104,7 +105,7 @@ class YoutubeLive:
             port_list=port_list,
             response_callback_creater=self.response_callback_creator,
             conversation_agenda_callback=self.get_random_comment_callback,
-            debate_agenda_callback=self.get_random_comment_callback,
+            debate_agenda_callback=self.debate_agenda_callback,
             waiting_callback=self.waiting_callback,
             fetch_comment_callback=self.get_random_comment_callback,
             num_update_comment=num_update_comment,
@@ -118,10 +119,10 @@ class YoutubeLive:
         """デコンストラクタ"""
         self.close()
 
-    def start(self) -> None:
+    async def start(self) -> None:
         """対話を開始する"""
         while True:
-            name, comment = self.get_youtube_comment_with_name()
+            name, comment = await self.get_youtube_comment_with_name()
             if "ディベート" in comment or "ディスカッション" in comment or "議論" in comment or "話し合って" in comment:
                 # LLMにディベートの議題を取得させる
                 self.debate_agenda = self.debate_agenda_model.generate_agenda(comment)
@@ -130,18 +131,20 @@ class YoutubeLive:
                 # self.agent_controller.agent1とagent2に会話させる．
                 # agent1にコメントを入力
                 agent1_input = TalkInput(name=name, input=comment).model_dump_json()
-                agent1_response = asyncio.run(self.agent_controller.agent1.graph.ainvoke({"messages": [agent1_input]}))
+                agent1_response = await self.agent_controller.agent1.graph.ainvoke({"messages": [agent1_input]})
                 agent1_reply = TalkFormat.model_validate_json(agent1_response["messages"][-1].content)
                 while True:
                     if self.waiting_callback():
                         break
                 # agent2にコメントとagent1の応答を入力
                 agent2_input = TalkInput(name=name, input=f"{comment}\n雲霧星奈: {agent1_reply.reply}").model_dump_json()
-                agent2_response = asyncio.run(self.agent_controller.agent2.graph.ainvoke({"messages": [agent2_input]}))
-                agent2_reply = TalkFormat.model_validate_json(agent2_response["messages"][-1].content)
+                await self.agent_controller.agent2.graph.ainvoke({"messages": [agent2_input]})
+                # agent2_reply = TalkFormat.model_validate_json(agent2_response["messages"][-1].content)
                 while True:
                     if self.waiting_callback():
                         break
+    
+    def start_debate(self) -> None:
         self.agent_controller.start_dialog()
 
     def close(self) -> None:
@@ -235,7 +238,7 @@ class YoutubeLive:
         assert isinstance(res, str)
         return res
 
-    def get_youtube_comment_with_name(self):
+    async def get_youtube_comment_with_name(self):
         if self.mode == "test":
             self.youtube.start_monitoring()
         while True:
@@ -243,7 +246,7 @@ class YoutubeLive:
             if response is not None:
                 break
             logger.info("コメントが取得できませんでした。再取得します...")
-            asyncio.run(asyncio.sleep(5))
+            await asyncio.sleep(5)
         res = response["text"]
         name = response["author"]
         self.unity_server.send_message_to_all(
@@ -263,7 +266,9 @@ if __name__ == "__main__":
     youtube_live = YoutubeLive(mode="test")
     try:
         # モニタリングを開始
-        youtube_live.start()
+        asyncio.run(youtube_live.start())
+        # ディベートを開始
+        youtube_live.start_debate()
     except KeyboardInterrupt:
         # Ctrl+Cが押された場合に終了処理を実行
         logger.info("終了コマンドを受信しました")

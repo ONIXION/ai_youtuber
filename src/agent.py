@@ -149,25 +149,37 @@ def web_search_creater(browser_port: int) -> Any:
 class DebateAgendaModel:
     def __init__(self):
         self.llm = ChatOpenAI(temperature=0.7)
-        self.prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content="""
-入力された文章からディベートの議題を抽出してください。
-出力は議題のみを簡潔に返してください．
+        self.prompt = ChatPromptTemplate([
+            ("system", """
+あなたはディベートの議題を抽出するアシスタントです。
+入力された文章から明確なディベートの議題を抽出し、簡潔に返してください。
 
-入力例：ミカンとリンゴ，どちらが甘いかディベートして
-出力例：ミカンはリンゴより甘い
+以下のルールに従ってください：
+1. 入力文に含まれる比較対象や論点を明確に特定する
+2. 「～事」という形で論点を表現する
 
-入力例：安楽死を認めるべきかどうかディベートして
-出力例：安楽死を認めること
+入力例1：ミカンとリンゴ，どちらが甘いかディベートして
+出力例1：ミカンはリンゴより甘い事
+
+入力例2：安楽死を認めるべきかどうか議論して
+出力例2：安楽死を認める事
             """),
-            HumanMessage(content="{input}")
+            ("human", "{input}")
         ])
         self.chain = self.prompt | self.llm
 
-    async def generate_agenda(self, text: str) -> str:
+    def generate_agenda(self, text: str) -> str:
         """ディベートの議題を生成する"""
-        response = await self.chain.ainvoke({"input": text})
-        return response.content
+        try:
+            response = self.chain.invoke({"input": text})
+            agenda = response.content.strip()
+            # 応答が空または無効な場合のエラー処理
+            if not agenda or agenda.isspace():
+                return "議題が見当たりませんでした。もう一度入力内容を確認してください。"
+            return agenda
+        except Exception as e:
+            logger.error(f"議題生成中にエラーが発生しました: {e}")
+            return "議題の生成中にエラーが発生しました。もう一度お試しください。"
 
 class AiAgent:
     def __init__(
@@ -180,8 +192,8 @@ class AiAgent:
         self.name = name
         # パラメータ設定
         # レートリミットが厳しかったので，gemini-1.5-flashを使用
-        # gemini_flash = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
-        gemini_flash = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.7)
+        gemini_flash = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
+        # gemini_flash = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.7)
         self.message_history: BaseMessage = []
         self.mh_limit = 10  # 10なら対話5回分の履歴を保持
         self.session_id = "ai-tuber"
