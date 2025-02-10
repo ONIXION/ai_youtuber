@@ -53,8 +53,6 @@ GOOGLE_API_KEY='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
 [こちらのサイト](https://qiita.com/Tomonobu3110/items/24c4e256498e1c4de922)を参考にしてYouTubeDataAPIv3を使えるようにしてください．\
 途中で認証情報をダウンロードする所があるので，そこでダウンロードしたjsonファイルの名前を`client_secrets.json`へと変更してルート(`ai_youtuber/client_secrets.json`)に配置します．
-- IPの設定
-`ai_youtuber/src/main.py`の
 
 ## ローカルセットアップ
 ここからはローカルでの作業になります．
