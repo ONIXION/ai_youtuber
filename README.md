@@ -27,7 +27,7 @@ Assist Modelの指示により，より深い思考を行い，その結果を�
 
 ## GCEセットアップ
 GCEで16GB以上のVARM容量を持つインスタンスを作成してください．
-適切なGPU Driverとcuda toolkitをインストールしてください．下記の環境で動作を確認しています．
+適切なGPU Driverとcuda toolkitをインストールしてください．下記の環境で動作を確認しています．\
 Driver Version: 560.35.03
 Cuda compilation tools, release 12.4, V12.4.131
 
