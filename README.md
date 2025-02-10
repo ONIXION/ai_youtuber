@@ -32,16 +32,30 @@ Debian GNU/Linux 12 (bookworm) \
 Driver Version: 560.35.03 \
 Cuda compilation tools, release 12.4, V12.4.131
 
+仮想ディスプレイのセットアップを行います.
+```
+# 仮想ディスプレイの依存パッケージをインストール（Ubuntu/Debian の場合）
+sudo apt update
+sudo apt install xvfb git fonts-dejavu xdotool -y
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+chromeのインストールを行います.
+```
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install ./google-chrome-stable_current_amd64.deb
+```
+
 WebRTC通信とWebSocket通信用に，GCEのファイアーウォールポリシーを編集し，8443と5000ポートを開放する必要があります．
 
 また，通信のために静的な外部IPを指定する必要があります．
 GCEにアクセスして，以下のコマンドを実行してください．
-- リポジトリのダウンロード
+- リポジトリのダウンロード(git がインストールされていない場合は先にgitをインストールしてください)
 ```
 git clone https://github.com/ONIXION/ai_youtuber.git -b feature-gce-hosting
 cd ai_youtuber
 ```
-- Python環境の構築
+- Python環境の構築(uv がインストールされていない場合は先にuvをインストールしてください)
 ```
 uv sync
 uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
