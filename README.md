@@ -1,22 +1,17 @@
 # AI Vtuber: AIエージェントによるYoutube配信システム
-![image2](image_data/capture.png)
-## アーキテクチャ
-![image1](image_data/AItuberフロー.drawio.png)
+![image2](image_data/capture2.png)
+本プロジェクトでは，Chromeを使い，情報収集をしながらディベートするマルチエージェントAI Vtuberシステムを作成しました．\
+２人のAIエージェントがYoutube上で，視聴者を交えてインタラクティブなライブ配信を行います．AIエージェントは必要に応じてbrowser-useやReasoningモデル等をツールとして使用するため，正確性の高いレスポンスが得られます．\
+また，両者に相反する主張を与えてディベート形式で議論を行わせる機能も備えており，批判的な観点からエージェントのアウトプットを検証できます．\
+さらに，エージェントにはシステムプロンプトで任意の性格を付与できるため，必要に応じて論理性を重視した展開にすることも，エンターテインメント性を高め，ライブ配信を楽しめるような展開にすることも可能です．
 
-1. YouTubeDataAPIを利用してYouTubeからコメントを取得する
-2. コメントをUnityに送信して表示する
-3. ランダムにコメントを抽選してUnityに送る
-4. コメントを棒読みちゃんで読み上げる
-5. Talk ModelがコメントとRAGを入力としてテキストを出力する
-6. テキストをUnityに送り，AivisSpeechで音声に変換する
-7. Talk Modelがアクションを指定した場合，Assist Model（=Agent）を呼び出してタスクを実行する
-8. Talk Modelが出力したアクションや感情によってUnityのキャラクターの振舞いが変化する
+## アーキテクチャ
+![image1](image_data/architecture.png)
 
 ## エージェントシステム
 - Talk Model\
 RAGでキャラ設定や会話履歴を与えられる．\
 通常の返答に加えて，感情や行動を出力する．
-
 - Assist Model\
 Talk Modelの出力の行動がNothingではなかった場合に呼び出される．\
 browser-useとThinking Modelをツールとして与えられたエージェントとなっており，Talk Modelが指定した行動に応じて，文脈を読んでタスクを実行する．
