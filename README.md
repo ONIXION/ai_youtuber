@@ -30,7 +30,7 @@ GCEで1×L4以上のVARM容量を持つインスタンスを作成してくだ�
 
 WebRTC通信とWebSocket通信用に，GCEのファイアーウォールポリシーを編集し，8443と5000ポートを開放する必要があります．
 
-また，通信のために外部IPを固定する必要があります．
+また，通信のために静的な外部IPを指定する必要があります．
 GCEにアクセスして，以下のコマンドを実行してください．
 - リポジトリのダウンロード
 ```
@@ -54,6 +54,8 @@ GOOGLE_API_KEY='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
 [ここらへん](https://qiita.com/Tomonobu3110/items/24c4e256498e1c4de922)のサイトを参考にしてYouTubeDataAPIv3を使えるようにしてください．
 途中で認証情報をダウンロードする所があるので，そこでダウンロードしたjsonファイルを`client_secrets.json`と名前を変更してルート(`ai_youtuber/client_secrets.json`)に配置します．
+- IPの設定
+
 
 ## ローカルセットアップ
 ここからはローカルでの作業になります．
@@ -68,7 +70,9 @@ GOOGLE_API_KEY='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 Unityバージョンは2022.3.42f1を使ってください．\
 [Google Drive]()からプロジェクトフォルダをダウンロードしてください．\
 Unity Hubの`Add project from disk`から，ダウンロードしたプロジェクトフォルダを指定し，プロジェクトをUnity Hubに追加してください．\
-Unity HubからAItuberプロジェクトを開いて，Unityエディタの`ファイル`->`ビルド設定`->`ビルド`からアプリをビルドし，AItuber.exeを作成しておいてください.
+ヒエラルキーウィンドウからEmptyオブジェクトを選択し，インスペクターウィンドウで`Web Socket Client (スクリプト)`>`Server Url`の`localhost`の部分を，GCEで指定した外部IPに変更する必要があります．\
+また，ヒエラルキーウィンドウから`BehindCanvas`>`WebRTCImage`を選択し，インスペクターウィンドウで`Web RTC Client`>`Server Url`の`34.133.108.164`の部分を，GCEで指定した外部IPに変更する必要があります．\
+Unity HubからAItuberプロジェクトを開いて，Unityエディタの`ファイル`->`ビルド設定`->`ビルド`からアプリをビルドし，AItuber.exeを作成してください.
 
 ## 動かし方
 - main.pyを実行する
