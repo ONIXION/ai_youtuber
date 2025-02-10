@@ -25,10 +25,16 @@ Assist Modelの指示によりWebブラウジングをして，その結果を�
 - Thinking Model\
 Assist Modelの指示により，より深い思考を行い，その結果を報告する
 
-## セットアップ
+## GCEセットアップ
+GCEで1×L4以上のVARM容量を持つインスタンスを作成してください．
+
+WebRTC通信とWebSocket通信用に，GCEのファイアーウォールポリシーを編集し，8443と5000ポートを開放する必要があります．
+
+また，通信のために外部IPを固定する必要があります．
+GCEにアクセスして，以下のコマンドを実行してください．
 - リポジトリのダウンロード
 ```
-git clone https://github.com/ONIXION/ai_youtuber.git
+git clone https://github.com/ONIXION/ai_youtuber.git -b feature-gce-hosting
 cd ai_youtuber
 ```
 - Python環境の構築
@@ -36,30 +42,33 @@ cd ai_youtuber
 uv sync
 uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
 ```
-- 環境変数の準備\
+- 環境変数の準備
+
 `.env`ファイルを作成し，ルート（`ai_youtuber/`）に配置\
 中に環境変数を書き込む．（適宜追加すること）
 ```
 OPENAI_API_KEY='sk-xxxxxxxxxxxxxxxxxxxxxxxxx'
 GOOGLE_API_KEY='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 ```
-- client_secrets.json\
-[ここらへん](https://qiita.com/Tomonobu3110/items/24c4e256498e1c4de922)のサイトを参考にしてYouTubeDataAPIv3を使えるようにする．\
-途中で認証情報をダウンロードする所があるので，そこでダウンロードしたjsonファイルを`client_secrets.json`と名前を変更してルートに配置する．
+- client_secrets.json
+
+[ここらへん](https://qiita.com/Tomonobu3110/items/24c4e256498e1c4de922)のサイトを参考にしてYouTubeDataAPIv3を使えるようにしてください．
+途中で認証情報をダウンロードする所があるので，そこでダウンロードしたjsonファイルを`client_secrets.json`と名前を変更してルート(`ai_youtuber/client_secrets.json`)に配置します．
+
+## ローカルセットアップ
+ここからはローカルでの作業になります．
 - AivisSpeechのインストール\
-[こちら](https://aivis-project.com/#products-aivisspeech)からダウンロードしてインストール．
+[こちら](https://aivis-project.com/#products-aivisspeech)からダウンロードしてインストールしてください．
 - 棒読みちゃんのインストール\
-[こちら](https://chi.usamimi.info/Program/Application/BouyomiChan/)からダウンロードしてインストール.
+[こちら](https://chi.usamimi.info/Program/Application/BouyomiChan/)からダウンロードしてインストールしてください．
 - OBS Studioをインストール\
-[こちら](https://obsproject.com/ja/download)からOBS Studioをインストール.\
-OBSとYoutubeを連携させておく（説明は省略）．
+[こちら](https://obsproject.com/ja/download)からOBS Studioをインストールしてください.\
+配信を行うには，OBSとYoutubeを連携させておく必要があります．
 - Unityのセットアップ\
-Unityバージョンは2022.3.42f1を使う．\
-Unity HubからAdd project from diskでプロジェクトを追加できるはず．\
-そのままプロジェクトが動作するかは未検証．\
-フォントのサイズが大きくてgitに載らなかったので，[こちら](https://drive.google.com/file/d/1xRp-VVSHNd86f_sLbh7pi-z4gnk9Ft3T/view?usp=sharing)からダウンロードして`AItuber\Assets\Fonts\NotoSansJP-Medium SDF.asset`に配置する．\
-ビルドしてAItuber.exeを作成しておく事．
-- main.pyの35行目前後にchrome.exeのパスを指定する箇所があるので変更する
+Unityバージョンは2022.3.42f1を使ってください．\
+[Google Drive]()からプロジェクトフォルダをダウンロードしてください．\
+Unity Hubの`Add project from disk`から，ダウンロードしたプロジェクトフォルダを指定し，プロジェクトをUnity Hubに追加してください．\
+Unity HubからAItuberプロジェクトを開いて，Unityエディタの`ファイル`->`ビルド設定`->`ビルド`からアプリをビルドし，AItuber.exeを作成しておいてください.
 
 ## 動かし方
 - main.pyを実行する
