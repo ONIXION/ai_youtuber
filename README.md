@@ -26,7 +26,7 @@ Assist Modelの指示によりWebブラウジングをして，その結果を�
 Assist Modelの指示により，より深い思考を行い，その結果を報告する
 
 ## GCEセットアップ
-GCEで1×L4以上のVARM容量を持つインスタンスを作成してください．
+GCEで24GB以上のVARM容量を持つインスタンスを作成してください．
 
 WebRTC通信とWebSocket通信用に，GCEのファイアーウォールポリシーを編集し，8443と5000ポートを開放する必要があります．
 
@@ -44,18 +44,17 @@ uv pip install torch torchvision torchaudio --index-url https://download.pytorch
 ```
 - 環境変数の準備
 
-`.env`ファイルを作成し，ルート（`ai_youtuber/`）に配置\
-中に環境変数を書き込む．（適宜追加すること）
+`.env`ファイルを作成し，ルート（`ai_youtuber/`）に配置し，中に環境変数を書き込んでください．
 ```
 OPENAI_API_KEY='sk-xxxxxxxxxxxxxxxxxxxxxxxxx'
 GOOGLE_API_KEY='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 ```
 - client_secrets.json
 
-[ここらへん](https://qiita.com/Tomonobu3110/items/24c4e256498e1c4de922)のサイトを参考にしてYouTubeDataAPIv3を使えるようにしてください．
-途中で認証情報をダウンロードする所があるので，そこでダウンロードしたjsonファイルを`client_secrets.json`と名前を変更してルート(`ai_youtuber/client_secrets.json`)に配置します．
+[こちらのサイト](https://qiita.com/Tomonobu3110/items/24c4e256498e1c4de922)を参考にしてYouTubeDataAPIv3を使えるようにしてください．\
+途中で認証情報をダウンロードする所があるので，そこでダウンロードしたjsonファイルの名前を`client_secrets.json`へと変更してルート(`ai_youtuber/client_secrets.json`)に配置します．
 - IPの設定
-
+`ai_youtuber/src/main.py`の
 
 ## ローカルセットアップ
 ここからはローカルでの作業になります．
@@ -68,34 +67,34 @@ GOOGLE_API_KEY='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 配信を行うには，OBSとYoutubeを連携させておく必要があります．
 - Unityのセットアップ\
 Unityバージョンは2022.3.42f1を使ってください．\
-[Google Drive]()からプロジェクトフォルダをダウンロードしてください．\
-Unity Hubの`Add project from disk`から，ダウンロードしたプロジェクトフォルダを指定し，プロジェクトをUnity Hubに追加してください．\
-ヒエラルキーウィンドウからEmptyオブジェクトを選択し，インスペクターウィンドウで`Web Socket Client (スクリプト)`>`Server Url`の`localhost`の部分を，GCEで指定した外部IPに変更する必要があります．\
-また，ヒエラルキーウィンドウから`BehindCanvas`>`WebRTCImage`を選択し，インスペクターウィンドウで`Web RTC Client`>`Server Url`の`34.133.108.164`の部分を，GCEで指定した外部IPに変更する必要があります．\
-Unity HubからAItuberプロジェクトを開いて，Unityエディタの`ファイル`->`ビルド設定`->`ビルド`からアプリをビルドし，AItuber.exeを作成してください.
+[Google Drive](https://drive.google.com/file/d/1kYpy6Mn_qmk-PAYPDmrpDwBwla7euOW0/view?usp=sharing)から.zipファイルをダウンロードしてください．\
+.zipファイルを解凍すると，Unityのプロジェクトフォルダになります．\
+Unity Hubの`Add project from disk`から，そのプロジェクトフォルダを指定し，プロジェクトをUnity Hubに追加してください．\
+プロジェクトを開いたら，ヒエラルキーウィンドウから`Empty`オブジェクトを選択し，インスペクターウィンドウで`Web Socket Client (スクリプト)`>`Server Url`の`localhost`の部分を，GCEで指定した外部IPに変更してください．\
+また，ヒエラルキーウィンドウから`BehindCanvas`>`WebRTCImage`を選択し，インスペクターウィンドウで`Web RTC Client`>`Server Url`の`34.133.108.164`の部分を，GCEで指定した外部IPに変更してください．\
+Unity HubからAItuberプロジェクトを開いて，Unityエディタの`ファイル`->`ビルド設定`->`ビルド`からアプリをビルドし，`AItuber.exe`を作成してください.
 
 ## 動かし方
 - main.pyを実行する
+GCEで以下のコマンドを実行します．
+```
+xbfv uv run -m src.main
+```
 - AivisSpeechとBouyomiChanを起動する
 - AItuver.exeを実行する
+main.pyの出力でUnityを起動するように指示されるので、そのタイミングでUnityを起動してください．\
+Unity側で画面の受信を確認できてからキー入力をして先に進むようにしてください。
 - Youtubeで配信を開始する\
-配信したことがない場合，配信できるようになるまで１日かかる\
-画面右上の`+作成`から`ライブ配信を開始`を選択．
+配信したことがない場合，配信できるようになるまで１日かかります\
+YouTubeホーム画面右上の`+作成`から`ライブ配信を開始`を選択してください．
 
 ![image3](image_data/livestream_setup.png)
 
 - OBSでウィンドウの設定をする\
-自動的にChromeが立ち上がるので，その画面をウィンドウキャプチャする.\
-その後，AItuver.exeの画面を`ウィンドウキャプチャ`>`AItuber`>`キャプチャ方法：Windows10`でキャプチャする．
-また，`カーソルをキャプチャする`のチェックを外しておくと良い．
-- クロマキーを設定する\
-AItuber.exeのウィンドウキャプチャを右クリック>フィルタ>エフェクトフィルタ>クロマキーを追加する.
-- ウィンドウ配置を調整する\
-Chromeの画面がAItuber.exeのクロマキーで抜いた部分に来るように配置する．\
-この時，Chromeのレイヤが最背面に来るようにする．
+AItuver.exeの画面を`ウィンドウキャプチャ`>`AItuber`>`キャプチャ方法：Windows10`でキャプチャします．
 - OBSの配信開始ボタンを押す
 - Youtubeの配信画面から動画のURLを取得して，ポップアップウィンドウに入力する\
-このURLはYoutubeStudioに表示されるものではなく，Youtubeの一般の配信画面のURLである必要がある．
+このURLはYoutubeStudioに表示されるものではなく，Youtubeの一般の配信画面のURLである必要があります．
 
 ## ファイル構造
 ```
